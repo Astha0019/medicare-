@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+
+{% block title %}Expiry Management Dashboard — MediCare Pro{% endblock %}
+
+{% block page_title %}
+<div>
+  <h4 class="mb-0">Batch Expiry Management</h4>
+  <small class="text-muted">Proactive batch lifecycle tracking, supplier credit returns, and write-offs</small>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Macro for Expiry Table -->
+{% macro render_expiry_table(items, is_expired=False) %}
+<div class="table-responsive">
+  <table class="table med-table align-middle">
+    <thead>
+      <tr>
+        <th>Medicine Description</th>
+        <th>Batch No</th>
+        <th>Supplier</th>
+        <th>Expiry Date</th>
+        <th class="text-center">Days Status</th>
+        <th class="text-end">Available Qty</th>
+        <th class="text-end">Unit Cost (₹)</th>
+        <th class="text-end">Total Purchase Cost</th>
+        <th class="text-center">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for itm in items %}
+      {% set b = itm.batch %}
+      {% set m = itm.medicine %}
+      <tr>
+        <td>
+          <a href="{{ url_for('view_medicine', id=m.id) }}" class="fw-bold text-decoration-none text-primary">
+            {{ m.name }}
+          </a>
+          <div class="small text-muted">{{ m.dosage_form }} {{ m.strength }} &bull; Rack: {{ m.rack_location or 'N/A' }}</div>
+        </td>
+        <td><strong class="font-monospace text-dark">{{ b.batch_number }}</strong></td>
+        <td><small class="text-muted">{{ b.supplier.name if b.supplier else 'N/A' }}</small></td>
+        <td>
+          <strong class="{% if is_expired %}text-danger{% else %}text-warning{% endif %}">
+            {{ b.expiry_date|date_fmt }}
+          </strong>
+        </td>
+        <td class="text-center">
+          {% if is_expired %}
+            <span class="badge badge-expired">Expired {{ itm.days|abs }}d ago</span>
+          {% elif itm.days <= 30 %}
+            <span class="badge badge-near-expiry">{{ itm.days }} days left</span>
+          {% else %}
+            <span class="badge bg-warning-subtle text-warning">{{ itm.days }} days left</span>
+          {% endif %}
+        </td>
+        <td class="text-end fw-bold">{{ b.quantity }} units</td>
+        <td class="text-end font-monospace">{{ b.purchase_price|inr }}</td>
+        <td class="text-end font-monospace fw-bold {% if is_expired %}text-danger{% else %}text-dark{% endif %}">
+          {{ itm.purchase_value|inr }}
+        </td>
+        <td class="text-center">
+          <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-danger" 
+                    onclick="openWriteOffModal({{ b.id }}, '{{ m.name }}', '{{ b.batch_number }}', {{ b.quantity }})" title="Write-off as loss">
+              <i class="bi bi-trash"></i> Write-Off
+            </button>
+            {% if b.supplier_id %}
+            <button type="button" class="btn btn-outline-secondary" 
+                    onclick="openSupplierReturnModal({{ b.id }}, '{{ m.name }}', '{{ b.batch_number }}', {{ b.quantity }}, '{{ b.supplier.name }}')" title="Return to distributor">
+              <i class="bi bi-truck"></i> Return
+            </button>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="9" class="text-center py-4 text-muted">
+          <i class="bi bi-check2-circle fs-3 text-success d-block mb-1"></i>
+          No batches found in this category.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endmacro %}
+
+<!-- Risk Valuation Cards (4 cards) -->
+<div class="row g-3 mb-4">
+  <!-- Expired Stock (Immediate Loss) -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card stat-card-danger">
+      <div>
+        <div class="stat-label">Already Expired (Unsold)</div>
+        <h3 class="stat-value text-danger">{{ exp.counts.expired }} <small class="fs-6 text-muted">batches</small></h3>
+        <small class="text-danger fw-semibold">Cost Loss: {{ exp.valuation.expired_loss|inr }}</small>
+      </div>
+      <div class="stat-icon stat-icon-danger">
+        <i class="bi bi-x-octagon-fill"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Expiring < 30 Days (Critical) -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card stat-card-warning">
+      <div>
+        <div class="stat-label">Critical: &lt; 30 Days</div>
+        <h3 class="stat-value text-warning">{{ exp.counts.within_30 }} <small class="fs-6 text-muted">batches</small></h3>
+        <small class="text-muted">Risk Value: {{ exp.valuation.risk_30|inr }}</small>
+      </div>
+      <div class="stat-icon stat-icon-warning">
+        <i class="bi bi-alarm-fill"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Expiring 31-60 Days (Warning) -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card stat-card-warning">
+      <div>
+        <div class="stat-label">Warning: 31 - 60 Days</div>
+        <h3 class="stat-value text-warning">{{ exp.counts.within_60 }} <small class="fs-6 text-muted">batches</small></h3>
+        <small class="text-muted">Risk Value: {{ exp.valuation.risk_60|inr }}</small>
+      </div>
+      <div class="stat-icon stat-icon-warning">
+        <i class="bi bi-hourglass-split"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Expiring 61-90 Days (Attention) -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card stat-card-blue">
+      <div>
+        <div class="stat-label">Attention: 61 - 90 Days</div>
+        <h3 class="stat-value text-primary">{{ exp.counts.within_90 }} <small class="fs-6 text-muted">batches</small></h3>
+        <small class="text-muted">Risk Value: {{ exp.valuation.risk_90|inr }}</small>
+      </div>
+      <div class="stat-icon stat-icon-blue">
+        <i class="bi bi-calendar-event"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tabbed Buckets Container -->
+<div class="med-card">
+  <ul class="nav nav-pills mb-3 border-bottom pb-3 gap-2" id="expiryTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active btn-sm" id="tab-expired" data-bs-toggle="pill" data-bs-target="#content-expired" type="button" role="tab">
+        <i class="bi bi-slash-circle me-1 text-danger"></i> Expired Stock ({{ exp.counts.expired }})
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link btn-sm" id="tab-30" data-bs-toggle="pill" data-bs-target="#content-30" type="button" role="tab">
+        <i class="bi bi-exclamation-circle me-1 text-warning"></i> Within 30 Days ({{ exp.counts.within_30 }})
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link btn-sm" id="tab-60" data-bs-toggle="pill" data-bs-target="#content-60" type="button" role="tab">
+        <i class="bi bi-clock me-1 text-warning"></i> Within 60 Days ({{ exp.counts.within_60 }})
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link btn-sm" id="tab-90" data-bs-toggle="pill" data-bs-target="#content-90" type="button" role="tab">
+        <i class="bi bi-calendar-check me-1 text-primary"></i> Within 90 Days ({{ exp.counts.within_90 }})
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content" id="expiryTabsContent">
+    <!-- Expired Tab -->
+    <div class="tab-pane fade show active" id="content-expired" role="tabpanel">
+      <div class="alert alert-danger py-2 small d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-shield-x fs-5 text-danger"></i>
+        <div>
+          <strong>Automatic Ineligibility:</strong> The system automatically blocks expired batches from point-of-sale billing. Please write off or return to supplier.
+        </div>
+      </div>
+      {{ render_expiry_table(exp.buckets.expired, is_expired=True) }}
+    </div>
+
+    <!-- Within 30 Days Tab -->
+    <div class="tab-pane fade" id="content-30" role="tabpanel">
+      <div class="alert alert-warning py-2 small mb-3">
+        <i class="bi bi-bell-fill me-1"></i> These batches expire in under 30 days. Recommend discounting or initiating distributor credit returns.
+      </div>
+      {{ render_expiry_table(exp.buckets.within_30, is_expired=False) }}
+    </div>
+
+    <!-- Within 60 Days Tab -->
+    <div class="tab-pane fade" id="content-60" role="tabpanel">
+      {{ render_expiry_table(exp.buckets.within_60, is_expired=False) }}
+    </div>
+
+    <!-- Within 90 Days Tab -->
+    <div class="tab-pane fade" id="content-90" role="tabpanel">
+      {{ render_expiry_table(exp.buckets.within_90, is_expired=False) }}
+    </div>
+  </div>
+</div>
+
+<!-- Write Off Modal -->
+<div class="modal fade" id="modalWriteOff" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('write_off_batch') }}">
+        <input type="hidden" name="batch_id" id="woBatchId">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title"><i class="bi bi-trash me-1"></i> Write-Off Stock</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Medicine & Batch</label>
+            <input type="text" id="woMedicineDetails" class="form-control" readonly>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Units to Write Off <span class="text-danger">*</span></label>
+            <input type="number" name="quantity" id="woQuantity" class="form-control" min="1" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Reason for Write-off</label>
+            <input type="text" name="reason" class="form-control" value="Expired medicine discarded as per biomedical norms" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger">Confirm Write-Off</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Return to Supplier Modal -->
+<div class="modal fade" id="modalSupplierReturn" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('return_to_supplier') }}">
+        <input type="hidden" name="batch_id" id="srBatchId">
+        <div class="modal-header bg-light">
+          <h5 class="modal-title"><i class="bi bi-truck me-1"></i> Return Batch to Supplier</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Medicine & Batch</label>
+            <input type="text" id="srMedicineDetails" class="form-control" readonly>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Distributor / Supplier</label>
+            <input type="text" id="srSupplierName" class="form-control" readonly>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Units to Return <span class="text-danger">*</span></label>
+            <input type="number" name="quantity" id="srQuantity" class="form-control" min="1" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Return Reason</label>
+            <input type="text" name="reason" class="form-control" value="Near expiry stock returned for supplier credit note" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Process Supplier Return</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function openWriteOffModal(batchId, medName, batchNo, maxQty) {
+  document.getElementById('woBatchId').value = batchId;
+  document.getElementById('woMedicineDetails').value = `${medName} (Batch: ${batchNo})`;
+  document.getElementById('woQuantity').max = maxQty;
+  document.getElementById('woQuantity').value = maxQty;
+  new bootstrap.Modal(document.getElementById('modalWriteOff')).show();
+}
+
+function openSupplierReturnModal(batchId, medName, batchNo, maxQty, supplierName) {
+  document.getElementById('srBatchId').value = batchId;
+  document.getElementById('srMedicineDetails').value = `${medName} (Batch: ${batchNo})`;
+  document.getElementById('srSupplierName').value = supplierName;
+  document.getElementById('srQuantity').max = maxQty;
+  document.getElementById('srQuantity').value = maxQty;
+  new bootstrap.Modal(document.getElementById('modalSupplierReturn')).show();
+}
+</script>
+{% endblock %}

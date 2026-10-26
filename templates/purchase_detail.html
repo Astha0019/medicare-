@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Purchase Invoice #{{ purchase.invoice_number }} — MediCare Pro{% endblock %}
+
+{% block page_title %}
+<div>
+  <h4 class="mb-0">Purchase Order #{{ purchase.invoice_number }}</h4>
+  <small class="text-muted">Inward Stock from {{ purchase.supplier.name }} &bull; Date: {{ purchase.purchase_date|date_fmt }}</small>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <a href="{{ url_for('purchases') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i> Back to Purchases
+  </a>
+  <span class="badge {% if purchase.payment_status == 'Paid' %}badge-good{% else %}bg-warning text-dark{% endif %} fs-6 px-3 py-2">
+    Payment: {{ purchase.payment_status }} ({{ purchase.payment_mode }})
+  </span>
+</div>
+
+<div class="row g-3 mb-4">
+  <!-- Supplier Details -->
+  <div class="col-12 col-md-6">
+    <div class="med-card h-100">
+      <h6 class="fw-bold text-primary mb-2"><i class="bi bi-truck me-1"></i> Supplier / Distributor Information</h6>
+      <div><strong>{{ purchase.supplier.name }}</strong></div>
+      <div class="text-muted small">{{ purchase.supplier.company_name }}</div>
+      <div class="text-muted small">{{ purchase.supplier.address or 'N/A' }}</div>
+      <div class="small mt-1">
+        <strong>Phone:</strong> {{ purchase.supplier.phone }} &bull; 
+        <strong>GSTIN:</strong> {{ purchase.supplier.gstin or 'N/A' }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Order & MR Details -->
+  <div class="col-12 col-md-6">
+    <div class="med-card h-100">
+      <h6 class="fw-bold text-teal mb-2"><i class="bi bi-person-badge me-1"></i> Facilitating Representative & Order Meta</h6>
+      <div>
+        <strong>Medical Representative (MR):</strong> 
+        {% if purchase.mr %}
+          {{ purchase.mr.name }} ({{ purchase.mr.company_name }}) - {{ purchase.mr.phone }}
+        {% else %}
+          <span class="text-muted">Direct Supplier Transaction</span>
+        {% endif %}
+      </div>
+      <div class="small text-muted mt-2">
+        <strong>Received on:</strong> {{ purchase.purchase_date|date_fmt }} &bull; 
+        <strong>Logged by:</strong> {{ purchase.created_by_user.full_name }}
+      </div>
+      {% if purchase.notes %}
+      <div class="small bg-light p-2 rounded mt-2 text-secondary">
+        <strong>Notes:</strong> {{ purchase.notes }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Received Line Items -->
+<div class="med-card mb-4">
+  <div class="med-card-header">
+    <h5 class="med-card-title mb-0">
+      <i class="bi bi-boxes text-primary"></i>
+      <span>Purchased Medicines & Batches ({{ purchase.items|length }} items)</span>
+    </h5>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table med-table align-middle">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Medicine Description</th>
+          <th>Batch Number</th>
+          <th>Mfg Date</th>
+          <th>Expiry Date</th>
+          <th class="text-end">Billed Qty</th>
+          <th class="text-end">Free Qty</th>
+          <th class="text-end">Purchase Price (₹)</th>
+          <th class="text-end">MRP (₹)</th>
+          <th class="text-end">Selling Price (₹)</th>
+          <th class="text-end">GST %</th>
+          <th class="text-end">Total Amount (₹)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in purchase.items %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>
+            <strong>{{ item.medicine.name }}</strong>
+            <div class="small text-muted">{{ item.medicine.dosage_form }} {{ item.medicine.strength }}</div>
+          </td>
+          <td><span class="badge bg-light text-dark border font-monospace">{{ item.batch_number }}</span></td>
+          <td><small class="text-muted">{{ item.mfg_date|date_fmt }}</small></td>
+          <td><small class="text-muted">{{ item.expiry_date|date_fmt }}</small></td>
+          <td class="text-end fw-bold">{{ item.quantity }}</td>
+          <td class="text-end text-success">+{{ item.free_quantity }}</td>
+          <td class="text-end font-monospace">{{ item.purchase_price|inr }}</td>
+          <td class="text-end font-monospace">{{ item.mrp|inr }}</td>
+          <td class="text-end font-monospace">{{ item.selling_price|inr }}</td>
+          <td class="text-end">{{ item.gst_rate }}%</td>
+          <td class="text-end font-monospace fw-bold text-primary">{{ item.total_amount|inr }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Financial Summary -->
+<div class="row justify-content-end">
+  <div class="col-12 col-md-5">
+    <div class="med-card">
+      <div class="d-flex justify-content-between py-1 small border-bottom">
+        <span class="text-muted">Gross Amount:</span>
+        <span class="fw-semibold">{{ purchase.subtotal|inr }}</span>
+      </div>
+      <div class="d-flex justify-content-between py-1 small border-bottom">
+        <span class="text-muted">Discount:</span>
+        <span class="fw-semibold text-danger">-{{ purchase.discount_amount|inr }}</span>
+      </div>
+      <div class="d-flex justify-content-between py-1 small border-bottom">
+        <span class="text-muted">GST Tax:</span>
+        <span class="fw-semibold text-success">+{{ purchase.tax_amount|inr }}</span>
+      </div>
+      <div class="d-flex justify-content-between py-2 border-top border-2 border-primary">
+        <span class="fs-6 fw-bold text-primary">Net Purchase Value:</span>
+        <span class="fs-5 fw-bold text-primary font-monospace">{{ purchase.net_amount|inr }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

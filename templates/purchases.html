@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Purchase Orders & Inward Supply — MediCare Pro{% endblock %}
+
+{% block page_title %}
+<div>
+  <h4 class="mb-0">Purchases & Supplier Invoices</h4>
+  <small class="text-muted">Inward stock receiving, distributor invoices, and batch stock increment</small>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="med-card">
+  <div class="med-card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div>
+      <h5 class="med-card-title mb-0">
+        <i class="bi bi-box-arrow-in-down text-primary"></i>
+        <span>Recorded Supplier Purchases ({{ purchases|length }})</span>
+      </h5>
+      <small class="text-muted">Linked to distributors and facilitating Medical Representatives</small>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('export_report_csv', type='purchases') }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export Purchases CSV
+      </a>
+      <a href="{{ url_for('new_purchase') }}" class="btn btn-sm btn-med-primary">
+        <i class="bi bi-plus-lg me-1"></i> Record New Purchase
+      </a>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table med-table align-middle">
+      <thead>
+        <tr>
+          <th>Supplier Invoice #</th>
+          <th>Purchase Date</th>
+          <th>Supplier / Distributor</th>
+          <th>Facilitating MR</th>
+          <th class="text-center">Items</th>
+          <th class="text-end">Subtotal (₹)</th>
+          <th class="text-end">Tax (₹)</th>
+          <th class="text-end">Net Total (₹)</th>
+          <th>Status</th>
+          <th class="text-center">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in purchases %}
+        <tr>
+          <td>
+            <a href="{{ url_for('view_purchase', id=p.id) }}" class="fw-bold text-decoration-none text-primary font-monospace">
+              {{ p.invoice_number }}
+            </a>
+          </td>
+          <td><small class="text-muted">{{ p.purchase_date|date_fmt }}</small></td>
+          <td>
+            <strong>{{ p.supplier.name }}</strong>
+            {% if p.supplier.gstin %}<div class="small text-muted font-monospace">GSTIN: {{ p.supplier.gstin }}</div>{% endif %}
+          </td>
+          <td>
+            {% if p.mr %}
+              <div>{{ p.mr.name }}</div>
+              <small class="text-muted">{{ p.mr.company_name }}</small>
+            {% else %}
+              <span class="text-muted small">Direct Supply</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            <span class="badge bg-secondary-subtle text-secondary">{{ p.items|length }} items</span>
+          </td>
+          <td class="text-end font-monospace">{{ p.subtotal|inr }}</td>
+          <td class="text-end font-monospace text-muted">{{ p.tax_amount|inr }}</td>
+          <td class="text-end font-monospace fw-bold text-dark fs-6">{{ p.net_amount|inr }}</td>
+          <td>
+            {% if p.payment_status == 'Paid' %}
+              <span class="badge badge-good">Paid ({{ p.payment_mode }})</span>
+            {% elif p.payment_status == 'Pending' %}
+              <span class="badge bg-warning text-dark">Pending</span>
+            {% else %}
+              <span class="badge bg-info text-dark">{{ p.payment_status }}</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            <a href="{{ url_for('view_purchase', id=p.id) }}" class="btn btn-sm btn-outline-primary" title="View details">
+              <i class="bi bi-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="10" class="text-center py-4 text-muted">
+            <i class="bi bi-inbox fs-3 d-block mb-1"></i>
+            No purchases recorded yet. Click "Record New Purchase" to log an incoming distributor invoice.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

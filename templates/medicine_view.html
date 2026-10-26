@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+
+{% block title %}{{ medicine.name }} — Medicine Details — MediCare Pro{% endblock %}
+
+{% block page_title %}
+<div>
+  <h4 class="mb-0">{{ medicine.name }}</h4>
+  <small class="text-muted">{{ medicine.generic_composition }} &bull; SKU: {{ medicine.sku }}</small>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Medicine Header Profile Card -->
+<div class="med-card mb-4">
+  <div class="row g-3 align-items-center">
+    <div class="col-12 col-md-8">
+      <div class="d-flex align-items-center gap-3">
+        <div class="bg-primary-subtle text-primary p-3 rounded-3 fs-2">
+          <i class="bi bi-capsule"></i>
+        </div>
+        <div>
+          <h3 class="fw-bold mb-1 text-primary">
+            {{ medicine.name }}
+            {% if medicine.is_demo %}<span class="badge badge-demo fs-6 ms-2">Demo</span>{% endif %}
+          </h3>
+          <p class="text-muted mb-2">
+            <strong>Generic:</strong> {{ medicine.generic_composition }} &bull; 
+            <strong>Brand:</strong> {{ medicine.brand_name or medicine.manufacturer }} &bull;
+            <strong>Manufacturer:</strong> {{ medicine.manufacturer }}
+          </p>
+          <div class="d-flex flex-wrap gap-2">
+            <span class="badge bg-light text-dark border"><i class="bi bi-prescription2 me-1"></i>{{ medicine.dosage_form }} {{ medicine.strength }}</span>
+            <span class="badge bg-light text-dark border"><i class="bi bi-tag me-1"></i>{{ medicine.category }}</span>
+            <span class="badge bg-light text-dark border"><i class="bi bi-receipt me-1"></i>HSN: {{ medicine.hsn_code }} (GST: {{ medicine.gst_rate }}%)</span>
+            <span class="badge bg-light text-primary border border-primary-subtle"><i class="bi bi-geo-alt-fill me-1"></i>Rack: {{ medicine.rack_location or 'Unassigned' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-md-4 text-md-end">
+      <div class="d-inline-block text-start p-3 bg-light rounded-3 border">
+        <div class="small text-muted text-uppercase fw-semibold">Total Active Stock</div>
+        <div class="fs-2 fw-bold {% if medicine.total_stock == 0 %}text-danger{% elif medicine.is_low_stock %}text-warning{% else %}text-success{% endif %}">
+          {{ medicine.total_stock }} <span class="fs-6 text-muted">units</span>
+        </div>
+        <div class="small text-muted">Min Threshold: {{ medicine.min_stock_level }} units</div>
+      </div>
+      <div class="mt-2">
+        <a href="{{ url_for('edit_medicine', id=medicine.id) }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-pencil me-1"></i> Edit Specification
+        </a>
+        <button type="button" class="btn btn-sm btn-med-primary ms-1" data-bs-toggle="modal" data-bs-target="#modalAddBatch">
+          <i class="bi bi-plus-circle me-1"></i> Add Batch
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Batches Table Section -->
+<div class="med-card mb-4">
+  <div class="med-card-header d-flex justify-content-between align-items-center">
+    <h5 class="med-card-title mb-0">
+      <i class="bi bi-boxes text-teal"></i>
+      <span>Tracked Batches ({{ batches|length }})</span>
+    </h5>
+    <button type="button" class="btn btn-sm btn-outline-teal" data-bs-toggle="modal" data-bs-target="#modalAddBatch">
+      <i class="bi bi-plus-lg me-1"></i> New Batch Entry
+    </button>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table med-table align-middle">
+      <thead>
+        <tr>
+          <th>Batch Number</th>
+          <th>Supplier</th>
+          <th>Mfg Date</th>
+          <th>Expiry Date</th>
+          <th>Expiry Status</th>
+          <th class="text-end">Purchase (₹)</th>
+          <th class="text-end">MRP (₹)</th>
+          <th class="text-end">Selling Price (₹)</th>
+          <th class="text-end">Available Stock</th>
+          <th class="text-center">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in batches %}
+        <tr>
+          <td>
+            <strong class="font-monospace text-primary fs-6">{{ b.batch_number }}</strong>
+          </td>
+          <td>
+            <small class="text-muted">{{ b.supplier.name if b.supplier else 'N/A' }}</small>
+          </td>
+          <td><small class="text-muted">{{ b.mfg_date|date_fmt }}</small></td>
+          <td>
+            <strong class="{% if b.is_expired %}text-danger{% elif b.days_to_expiry <= 30 %}text-warning{% endif %}">
+              {{ b.expiry_date|date_fmt }}
+            </strong>
+          </td>
+          <td>
+            {% if b.is_expired %}
+              <span class="badge badge-expired">EXPIRED ({{ b.days_to_expiry|abs }}d ago)</span>
+            {% elif b.days_to_expiry <= 30 %}
+              <span class="badge badge-near-expiry">Critical ({{ b.days_to_expiry }}d left)</span>
+            {% elif b.days_to_expiry <= 90 %}
+              <span class="badge badge-near-expiry">Near Expiry ({{ b.days_to_expiry }}d left)</span>
+            {% else %}
+              <span class="badge badge-good">Valid ({{ b.days_to_expiry }}d left)</span>
+            {% endif %}
+          </td>
+          <td class="text-end font-monospace">{{ b.purchase_price|inr }}</td>
+          <td class="text-end font-monospace">{{ b.mrp|inr }}</td>
+          <td class="text-end font-monospace fw-bold text-teal">{{ b.selling_price|inr }}</td>
+          <td class="text-end">
+            <span class="fw-bold {% if b.quantity == 0 %}text-danger{% else %}text-dark{% endif %}">
+              {{ b.quantity }} units
+            </span>
+          </td>
+          <td class="text-center">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openAdjustModal({{ b.id }}, '{{ b.batch_number }}', {{ b.quantity }})" title="Audit / Adjust physical count">
+              <i class="bi bi-sliders me-1"></i> Adjust
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="10" class="text-center py-4 text-muted">No batches recorded for this medicine yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Stock Movement History Section -->
+<div class="med-card">
+  <div class="med-card-header">
+    <h5 class="med-card-title mb-0">
+      <i class="bi bi-clock-history text-secondary"></i>
+      <span>Stock Movement History (Last 20 Events)</span>
+    </h5>
+    <small class="text-muted">Audit trail for purchases, sales, returns, and adjustments</small>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table med-table align-middle">
+      <thead>
+        <tr>
+          <th>Date & Time</th>
+          <th>Batch</th>
+          <th>Type</th>
+          <th>Reference</th>
+          <th class="text-end">Quantity Change</th>
+          <th class="text-end">Balance After</th>
+          <th>Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in movements %}
+        <tr>
+          <td><small class="text-muted">{{ m.created_at|datetime_fmt }}</small></td>
+          <td><span class="badge bg-light text-dark border">{{ m.batch.batch_number if m.batch else 'General' }}</span></td>
+          <td>
+            {% if m.movement_type == 'Purchase' %}
+              <span class="badge bg-primary-subtle text-primary">Purchase In</span>
+            {% elif m.movement_type == 'Sale' %}
+              <span class="badge bg-danger-subtle text-danger">Sale Out</span>
+            {% elif m.movement_type == 'CustomerReturn' %}
+              <span class="badge bg-success-subtle text-success">Customer Return</span>
+            {% elif m.movement_type == 'SupplierReturn' %}
+              <span class="badge bg-warning-subtle text-warning">Supplier Return</span>
+            {% elif m.movement_type == 'WriteOff' %}
+              <span class="badge bg-dark">Write-Off</span>
+            {% else %}
+              <span class="badge bg-secondary">Adjustment</span>
+            {% endif %}
+          </td>
+          <td><small class="font-monospace">{{ m.reference_id or 'N/A' }}</small></td>
+          <td class="text-end fw-bold {% if m.quantity_change > 0 %}text-success{% else %}text-danger{% endif %}">
+            {{ '+' if m.quantity_change > 0 else '' }}{{ m.quantity_change }}
+          </td>
+          <td class="text-end fw-bold">{{ m.current_stock_after }}</td>
+          <td><small class="text-muted">{{ m.reason or '' }}</small></td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center py-3 text-muted">No stock movements recorded yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Batch Modal -->
+<div class="modal fade" id="modalAddBatch" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('add_batch', medicine_id=medicine.id) }}">
+        <div class="modal-header bg-light">
+          <h5 class="modal-title text-primary"><i class="bi bi-boxes me-1"></i> Add New Batch for {{ medicine.name }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-semibold">Batch Number <span class="text-danger">*</span></label>
+              <input type="text" name="batch_number" class="form-control text-uppercase" placeholder="e.g., B2402" required>
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-semibold">Supplier / Distributor</label>
+              <select name="supplier_id" class="form-select">
+                <option value="">Select Supplier</option>
+                {% for s in suppliers %}
+                <option value="{{ s.id }}">{{ s.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-semibold">Manufacturing Date</label>
+              <input type="date" name="mfg_date" class="form-control">
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-semibold">Expiry Date <span class="text-danger">*</span></label>
+              <input type="date" name="expiry_date" class="form-control" required>
+            </div>
+            <div class="col-12 col-md-3">
+              <label class="form-label small fw-semibold">Quantity (Units) <span class="text-danger">*</span></label>
+              <input type="number" name="quantity" class="form-control" min="0" value="50" required>
+            </div>
+            <div class="col-12 col-md-3">
+              <label class="form-label small fw-semibold">Purchase Price (₹) <span class="text-danger">*</span></label>
+              <input type="number" name="purchase_price" class="form-control" step="0.01" min="0" value="0.00" required>
+            </div>
+            <div class="col-12 col-md-3">
+              <label class="form-label small fw-semibold">MRP (₹) <span class="text-danger">*</span></label>
+              <input type="number" name="mrp" class="form-control" step="0.01" min="0" value="0.00" required>
+            </div>
+            <div class="col-12 col-md-3">
+              <label class="form-label small fw-semibold">Selling Price (₹) <span class="text-danger">*</span></label>
+              <input type="number" name="selling_price" class="form-control" step="0.01" min="0" value="0.00" required>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-med-primary"><i class="bi bi-save me-1"></i> Save Batch</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Adjust Stock Modal -->
+<div class="modal fade" id="modalAdjustStock" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('adjust_stock') }}">
+        <input type="hidden" name="batch_id" id="adjustBatchId">
+        <div class="modal-header bg-light">
+          <h5 class="modal-title"><i class="bi bi-sliders me-1"></i> Adjust Batch Stock Count</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small">Update the available stock count for physical audit discrepancy correction.</p>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Batch Number</label>
+            <input type="text" id="adjustBatchNumber" class="form-control" readonly>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Current Count</label>
+            <input type="text" id="adjustCurrentQty" class="form-control" readonly>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Actual Audited Physical Count <span class="text-danger">*</span></label>
+            <input type="number" name="new_quantity" id="adjustNewQty" class="form-control" min="0" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Adjustment Reason <span class="text-danger">*</span></label>
+            <input type="text" name="reason" class="form-control" placeholder="e.g., Monthly physical inventory audit variance" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-warning"><i class="bi bi-check-lg me-1"></i> Update Stock</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function openAdjustModal(batchId, batchNo, currentQty) {
+  document.getElementById('adjustBatchId').value = batchId;
+  document.getElementById('adjustBatchNumber').value = batchNo;
+  document.getElementById('adjustCurrentQty').value = currentQty + ' units';
+  document.getElementById('adjustNewQty').value = currentQty;
+  const modal = new bootstrap.Modal(document.getElementById('modalAdjustStock'));
+  modal.show();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Suppliers & Distributors — MediCare Pro{% endblock %}
+
+{% block page_title %}
+<div>
+  <h4 class="mb-0">Pharmaceutical Suppliers & Distributors</h4>
+  <small class="text-muted">Wholesale supply agencies, GSTIN records, drug license numbers, and payments</small>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="med-card">
+  <div class="med-card-header d-flex justify-content-between align-items-center">
+    <h5 class="med-card-title mb-0">
+      <i class="bi bi-truck text-primary"></i>
+      <span>Registered Suppliers ({{ suppliers|length }})</span>
+    </h5>
+    <button type="button" class="btn btn-sm btn-med-teal" data-bs-toggle="modal" data-bs-target="#modalAddSupplier">
+      <i class="bi bi-plus-lg me-1"></i> Add New Supplier
+    </button>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table med-table align-middle">
+      <thead>
+        <tr>
+          <th>Supplier Agency</th>
+          <th>Contact Person</th>
+          <th>Phone & Email</th>
+          <th>GSTIN & Drug License</th>
+          <th class="text-center">Orders</th>
+          <th class="text-end">Total Purchases (₹)</th>
+          <th class="text-end">Pending Payment (₹)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s_item in suppliers %}
+        {% set s = s_item.supplier %}
+        <tr>
+          <td>
+            <strong>{{ s.name }}</strong>
+            <div class="small text-muted">{{ s.company_name }}</div>
+            {% if s.address %}<small class="text-muted text-truncate d-block" style="max-width: 250px;">{{ s.address }}</small>{% endif %}
+          </td>
+          <td>{{ s.contact_person or 'N/A' }}</td>
+          <td>
+            <div><i class="bi bi-telephone me-1 text-primary"></i>{{ s.phone }}</div>
+            {% if s.email %}<small class="text-muted"><i class="bi bi-envelope me-1"></i>{{ s.email }}</small>{% endif %}
+          </td>
+          <td>
+            {% if s.gstin %}<div class="small font-monospace">GSTIN: <strong>{{ s.gstin }}</strong></div>{% endif %}
+            {% if s.drug_license_no %}<small class="text-muted font-monospace">DL: {{ s.drug_license_no }}</small>{% endif %}
+          </td>
+          <td class="text-center">
+            <span class="badge bg-secondary-subtle text-secondary">{{ s_item.purchases_count }} order(s)</span>
+          </td>
+          <td class="text-end font-monospace fw-bold text-dark fs-6">
+            {{ s_item.total_amount|inr }}
+          </td>
+          <td class="text-end font-monospace">
+            {% if s_item.pending_amount > 0 %}
+              <span class="text-danger fw-bold">{{ s_item.pending_amount|inr }}</span>
+            {% else %}
+              <span class="text-success"><i class="bi bi-check2 me-1"></i>Clear</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center py-4 text-muted">No suppliers registered yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Supplier Modal -->
+<div class="modal fade" id="modalAddSupplier" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('suppliers') }}">
+        <div class="modal-header bg-light">
+          <h5 class="modal-title text-primary"><i class="bi bi-truck me-1"></i> Register New Pharmaceutical Supplier</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-semibold">Supplier / Agency Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" placeholder="e.g., Sri Venkateshwara Pharma Distributors" required>
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-semibold">Company / Parent Firm <span class="text-danger">*</span></label>
+              <input type="text" name="company_name" class="form-control" placeholder="e.g., SVP Healthcare India Ltd" required>
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-semibold">Contact Person</label>
+              <input type="text" name="contact_person" class="form-control" placeholder="e.g., Venkatesh Rao">
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-semibold">Contact Phone Number <span class="text-danger">*</span></label>
+              <input type="text" name="phone" class="form-control" placeholder="e.g., 080-26781234 or 9845012345" required>
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-semibold">Email Address</label>
+              <input type="email" name="email" class="form-control" placeholder="e.g., orders@svppharma.com">
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-semibold">GSTIN Number</label>
+              <input type="text" name="gstin" class="form-control text-uppercase font-monospace" placeholder="e.g., 29AABCS1429B1Z1">
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-semibold">Drug License (DL) Number</label>
+              <input type="text" name="drug_license_no" class="form-control text-uppercase" placeholder="e.g., KA-BLR-20B-45892 / 21B-45893">
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-semibold">Physical Address</label>
+              <input type="text" name="address" class="form-control" placeholder="e.g., Peenya Industrial Area, Bangalore">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-med-primary"><i class="bi bi-save me-1"></i> Register Supplier</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

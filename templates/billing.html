@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}Point of Sale (POS) Billing — MediCare Pro{% endblock %}
+
+{% block page_title %}
+<div>
+  <h4 class="mb-0">Counter Pharmacy Billing (POS)</h4>
+  <small class="text-muted">Instant medicine typeahead, batch selection, and GST invoicing</small>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  <!-- Left Column: Search & Cart Table -->
+  <div class="col-12 col-xl-8">
+    <!-- Medicine Search Bar -->
+    <div class="med-card mb-3">
+      <div class="pos-search-box">
+        <div class="input-group input-group-lg shadow-sm">
+          <span class="input-group-text bg-white border-end-0 text-primary">
+            <i class="bi bi-search fs-5"></i>
+          </span>
+          <input type="text" id="posMedicineSearch" class="form-control border-start-0 ps-0 fs-6" 
+                 placeholder="Search medicine by name, generic salt, SKU, or scan barcode... (Shortcut: F2)" autofocus autocomplete="off">
+          <span class="input-group-text bg-light text-muted small font-monospace d-none d-sm-block">
+            Press F2 to focus
+          </span>
+        </div>
+        <!-- Typeahead dropdown results -->
+        <div id="posSearchResults" class="pos-search-results"></div>
+      </div>
+    </div>
+
+    <!-- Active Cart Items Table Card -->
+    <div class="med-card p-0 overflow-hidden mb-3">
+      <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-bold text-primary">
+          <i class="bi bi-cart3 me-1"></i>
+          <span>Prescription Bill Items (<span id="posCartItemsCount">0</span>)</span>
+        </h6>
+        <span class="badge bg-secondary-subtle text-secondary small">Prices in INR (₹)</span>
+      </div>
+
+      <div class="table-responsive" style="min-height: 280px; max-height: 480px; overflow-y: auto;">
+        <table class="table med-table pos-cart-table align-middle mb-0">
+          <thead>
+            <tr>
+              <th style="width: 40px;">#</th>
+              <th>Medicine Description</th>
+              <th>Batch</th>
+              <th>Exp Date</th>
+              <th class="text-center" style="width: 90px;">Qty</th>
+              <th class="text-end">Rate (₹)</th>
+              <th class="text-center" style="width: 80px;">Disc %</th>
+              <th class="text-end">Total (₹)</th>
+              <th class="text-center" style="width: 50px;"></th>
+            </tr>
+          </thead>
+          <tbody id="posCartTableBody">
+            <tr id="posCartEmptyRow">
+              <td colspan="9" class="text-center py-5 text-muted">
+                <i class="bi bi-cart-x fs-1 d-block mb-2 text-secondary"></i>
+                <h6 class="fw-bold mb-1">Billing cart is empty</h6>
+                <small>Type a medicine name or scan barcode in the search box above to add items.</small>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column: Customer Info, Payment & Summary -->
+  <div class="col-12 col-xl-4">
+    <!-- Customer & Doctor Info Card -->
+    <div class="med-card mb-3">
+      <h6 class="fw-bold text-primary mb-3">
+        <i class="bi bi-person-lines-fill me-1"></i> Customer & Doctor Details
+      </h6>
+      <div class="mb-2">
+        <label class="form-label small text-muted mb-1">Customer / Patient Name</label>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text bg-white"><i class="bi bi-person"></i></span>
+          <input type="text" id="posCustomerName" class="form-control" placeholder="Walk-in Customer" value="Walk-in Customer">
+        </div>
+      </div>
+      <div class="mb-2">
+        <label class="form-label small text-muted mb-1">Customer Mobile Number</label>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text bg-white"><i class="bi bi-phone"></i></span>
+          <input type="text" id="posCustomerPhone" class="form-control" placeholder="e.g., 9845012345">
+        </div>
+      </div>
+      <div class="mb-1">
+        <label class="form-label small text-muted mb-1">Prescribing Doctor (Optional)</label>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text bg-white"><i class="bi bi-hospital"></i></span>
+          <input type="text" id="posDoctorName" class="form-control" placeholder="e.g., Dr. R. K. Mehta">
+        </div>
+      </div>
+    </div>
+
+    <!-- Grand Total Display Card -->
+    <div class="pos-total-display shadow-sm">
+      <div class="total-label">Total Amount Payable</div>
+      <div class="total-val" id="posSummaryGrandTotal">₹0.00</div>
+      <div class="small opacity-75">Inclusive of all applicable GST taxes</div>
+    </div>
+
+    <!-- Breakdown Summary Card -->
+    <div class="med-card mb-3">
+      <div class="d-flex justify-content-between py-1 small border-bottom">
+        <span class="text-muted">Subtotal (Gross):</span>
+        <span class="fw-semibold" id="posSummarySubtotal">₹0.00</span>
+      </div>
+      <div class="d-flex justify-content-between py-1 small border-bottom">
+        <span class="text-muted">Item Discount:</span>
+        <span class="fw-semibold text-danger" id="posSummaryDiscount">-₹0.00</span>
+      </div>
+      <div class="d-flex justify-content-between py-1 small border-bottom">
+        <span class="text-muted">GST Tax (CGST + SGST):</span>
+        <span class="fw-semibold text-success" id="posSummaryTax">₹0.00</span>
+      </div>
+      <div class="d-flex justify-content-between py-1 small border-bottom">
+        <span class="text-muted">Round Off:</span>
+        <span class="fw-semibold text-muted" id="posSummaryRoundOff">₹0.00</span>
+      </div>
+
+      <!-- Payment Mode -->
+      <div class="mt-3">
+        <label class="form-label small fw-semibold text-muted mb-1">Payment Method</label>
+        <select id="posPaymentMode" class="form-select form-select-sm mb-2">
+          <option value="Cash" selected>Cash</option>
+          <option value="UPI">UPI (GooglePay / PhonePe / Paytm)</option>
+          <option value="Card">Debit / Credit Card</option>
+          <option value="Mixed">Mixed</option>
+        </select>
+
+        <div id="posPaymentRefContainer" style="display: none;" class="mb-2">
+          <input type="text" id="posPaymentRef" class="form-control form-control-sm" placeholder="UPI Reference / Card Transaction ID">
+        </div>
+
+        <div class="row g-2 align-items-center">
+          <div class="col-6">
+            <label class="form-label small text-muted mb-1">Amount Received</label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-white">₹</span>
+              <input type="number" id="posAmountPaid" class="form-control text-end fw-bold" step="1" placeholder="0">
+            </div>
+          </div>
+          <div class="col-6 text-end">
+            <label class="form-label small text-muted mb-1">Change Return</label>
+            <div class="fw-bold fs-6 text-teal" id="posChangeReturned">₹0.00</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Submit Checkout Button -->
+      <button type="button" id="posBtnCheckout" class="btn btn-med-primary w-100 py-2 mt-3 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2">
+        <i class="bi bi-check-circle-fill"></i>
+        <span>Complete & Print Bill</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Checkout Success Modal -->
+<div class="modal fade" id="posSuccessModal" tabindex="-1" data-bs-backdrop="static" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-success text-white py-3">
+        <h5 class="modal-title fw-bold"><i class="bi bi-check2-circle me-1"></i> Sale Invoice Completed!</h5>
+      </div>
+      <div class="modal-body text-center p-4">
+        <div class="d-inline-flex align-items-center justify-content-center bg-success-subtle text-success rounded-circle mb-3" style="width: 60px; height: 60px;">
+          <i class="bi bi-receipt fs-2"></i>
+        </div>
+        <h4 class="fw-bold text-dark mb-1 font-monospace" id="posSuccessInvoiceNo">INV-XXXXXX</h4>
+        <p class="text-muted small mb-3">The inventory has been updated and stock movement logged.</p>
+
+        <div class="p-3 bg-light rounded-3 border mb-3 text-start">
+          <div class="d-flex justify-content-between mb-1">
+            <span class="text-muted">Total Invoice Amount:</span>
+            <strong class="fs-5 text-primary" id="posSuccessTotal">₹0.00</strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-muted">Change Returned:</span>
+            <strong class="text-success" id="posSuccessChange">₹0.00</strong>
+          </div>
+        </div>
+
+        <div class="d-flex flex-column gap-2">
+          <a id="posSuccessPdfBtn" href="#" class="btn btn-med-primary py-2 fw-semibold">
+            <i class="bi bi-file-earmark-pdf-fill me-1"></i> Download Official Tax PDF Invoice
+          </a>
+          <a id="posSuccessViewBtn" href="#" class="btn btn-outline-secondary py-2">
+            <i class="bi bi-printer me-1"></i> View & Print Receipt Slip
+          </a>
+          <button type="button" class="btn btn-link text-decoration-none text-muted small" data-bs-dismiss="modal">
+            Close & Start New Sale (F2)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

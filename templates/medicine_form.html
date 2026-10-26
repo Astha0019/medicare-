@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}{% if mode == 'edit' %}Edit Medicine — {{ medicine.name }}{% else %}Add New Medicine{% endif %} — MediCare Pro{% endblock %}
+
+{% block page_title %}
+<div>
+  <h4 class="mb-0">{% if mode == 'edit' %}Edit Medicine Details{% else %}Register New Medicine{% endif %}</h4>
+  <small class="text-muted">Enter pharmaceutical specifications, pricing rules, and rack storage</small>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-xl-10">
+    <div class="med-card">
+      <div class="med-card-header d-flex justify-content-between align-items-center">
+        <h5 class="med-card-title mb-0">
+          <i class="bi bi-capsule text-primary"></i>
+          <span>{% if mode == 'edit' %}Editing: {{ medicine.name }}{% else %}New Medicine Specification Form{% endif %}</span>
+        </h5>
+        <a href="{{ url_for('inventory') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i> Back to Inventory
+        </a>
+      </div>
+
+      <!-- Pricing Notice -->
+      <div class="alert alert-info py-2 small d-flex align-items-center gap-2 mb-4">
+        <i class="bi bi-info-circle-fill text-info fs-5"></i>
+        <div>
+          <strong>Indian Rupee Pricing:</strong> All prices entered are in ₹ (INR). You can adjust purchase, MRP, and selling prices manually based on distributor invoices.
+        </div>
+      </div>
+
+      <form method="POST">
+        <div class="row g-3">
+          <!-- Basic Info -->
+          <div class="col-12 col-md-6">
+            <label class="form-label fw-semibold small">Medicine Brand / Product Name <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control" placeholder="e.g., Dolo 650" value="{{ medicine.name if medicine else '' }}" required>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label class="form-label fw-semibold small">Marketing Brand Company</label>
+            <input type="text" name="brand_name" class="form-control" placeholder="e.g., Micro Labs Ltd" value="{{ medicine.brand_name if medicine else '' }}">
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label class="form-label fw-semibold small">Manufacturer <span class="text-danger">*</span></label>
+            <input type="text" name="manufacturer" class="form-control" placeholder="e.g., Micro Labs Ltd" value="{{ medicine.manufacturer if medicine else '' }}" required>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label class="form-label fw-semibold small">Generic Composition / Salt <span class="text-danger">*</span></label>
+            <input type="text" name="generic_composition" class="form-control" placeholder="e.g., Paracetamol 650mg" value="{{ medicine.generic_composition if medicine else '' }}" required>
+          </div>
+
+          <!-- Dosage Form, Strength, Category -->
+          <div class="col-12 col-md-4">
+            <label class="form-label fw-semibold small">Dosage Form <span class="text-danger">*</span></label>
+            <select name="dosage_form" class="form-select" required>
+              {% set forms = ['Tablet', 'Capsule', 'Syrup', 'Suspension', 'Injection', 'Ointment', 'Gel', 'Drops', 'Inhaler', 'Powder', 'Device'] %}
+              {% for f in forms %}
+              <option value="{{ f }}" {% if medicine and medicine.dosage_form == f %}selected{% endif %}>{{ f }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-12 col-md-4">
+            <label class="form-label fw-semibold small">Strength / Pack Size <span class="text-danger">*</span></label>
+            <input type="text" name="strength" class="form-control" placeholder="e.g., 650 mg or 100 ml" value="{{ medicine.strength if medicine else '' }}" required>
+          </div>
+
+          <div class="col-12 col-md-4">
+            <label class="form-label fw-semibold small">Therapeutic Category</label>
+            <input type="text" name="category" class="form-control" placeholder="e.g., Analgesic & Antipyretic" value="{{ medicine.category if medicine else 'General' }}">
+          </div>
+
+          <!-- SKU, Barcode, HSN, GST -->
+          <div class="col-12 col-md-3">
+            <label class="form-label fw-semibold small">Product SKU <span class="text-danger">*</span></label>
+            <input type="text" name="sku" class="form-control text-uppercase" placeholder="e.g., MED-DOLO-650" value="{{ medicine.sku if medicine else '' }}" {% if mode == 'edit' %}readonly{% endif %} required>
+          </div>
+
+          <div class="col-12 col-md-3">
+            <label class="form-label fw-semibold small">Barcode / EAN</label>
+            <input type="text" name="barcode" class="form-control" placeholder="e.g., 890123400101" value="{{ medicine.barcode if medicine and medicine.barcode else '' }}">
+          </div>
+
+          <div class="col-12 col-md-3">
+            <label class="form-label fw-semibold small">HSN Code <span class="text-danger">*</span></label>
+            <input type="text" name="hsn_code" class="form-control" placeholder="3004" value="{{ medicine.hsn_code if medicine else '3004' }}" required>
+          </div>
+
+          <div class="col-12 col-md-3">
+            <label class="form-label fw-semibold small">Applicable GST Rate (%) <span class="text-danger">*</span></label>
+            <select name="gst_rate" class="form-select" required>
+              <option value="0.00" {% if medicine and medicine.gst_rate == 0 %}selected{% endif %}>0% (Exempt)</option>
+              <option value="5.00" {% if medicine and medicine.gst_rate == 5 %}selected{% endif %}>5%</option>
+              <option value="12.00" {% if (medicine and medicine.gst_rate == 12) or not medicine %}selected{% endif %}>12% (Standard Pharma)</option>
+              <option value="18.00" {% if medicine and medicine.gst_rate == 18 %}selected{% endif %}>18%</option>
+              <option value="28.00" {% if medicine and medicine.gst_rate == 28 %}selected{% endif %}>28%</option>
+            </select>
+          </div>
+
+          <!-- Shelf Location and Min Stock -->
+          <div class="col-12 col-md-6">
+            <label class="form-label fw-semibold small">Pharmacy Shelf / Rack Location</label>
+            <div class="input-group">
+              <span class="input-group-text bg-white text-muted"><i class="bi bi-geo-alt"></i></span>
+              <input type="text" name="rack_location" class="form-control" placeholder="e.g., Rack A-01, Shelf 2" value="{{ medicine.rack_location if medicine and medicine.rack_location else '' }}">
+            </div>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label class="form-label fw-semibold small">Minimum Stock Reorder Alert Level <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <span class="input-group-text bg-white text-muted"><i class="bi bi-bell"></i></span>
+              <input type="number" name="min_stock_level" class="form-control" min="0" value="{{ medicine.min_stock_level if medicine else 15 }}" required>
+              <span class="input-group-text bg-light text-muted">units</span>
+            </div>
+          </div>
+
+          {% if mode == 'add' %}
+          <!-- Optional Initial Batch Card -->
+          <div class="col-12 mt-4">
+            <div class="card border border-primary-subtle bg-light">
+              <div class="card-header bg-white border-bottom border-primary-subtle py-2 d-flex justify-content-between align-items-center">
+                <span class="fw-bold text-primary small"><i class="bi bi-boxes me-1"></i> Opening Stock Batch Details (Optional)</span>
+                <span class="badge bg-secondary-subtle text-secondary small">Leave blank if receiving via Purchase Order</span>
+              </div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-12 col-md-3">
+                    <label class="form-label small fw-semibold">Batch Number</label>
+                    <input type="text" name="initial_batch_number" class="form-control form-control-sm text-uppercase" placeholder="e.g., B2401">
+                  </div>
+                  <div class="col-12 col-md-3">
+                    <label class="form-label small fw-semibold">Manufacturing Date</label>
+                    <input type="date" name="initial_mfg_date" class="form-control form-control-sm">
+                  </div>
+                  <div class="col-12 col-md-3">
+                    <label class="form-label small fw-semibold">Expiry Date</label>
+                    <input type="date" name="initial_expiry_date" class="form-control form-control-sm">
+                  </div>
+                  <div class="col-12 col-md-3">
+                    <label class="form-label small fw-semibold">Opening Quantity</label>
+                    <input type="number" name="initial_quantity" class="form-control form-control-sm" min="0" value="0">
+                  </div>
+                  <div class="col-12 col-md-3">
+                    <label class="form-label small fw-semibold">Purchase Price (₹)</label>
+                    <input type="number" name="initial_purchase_price" class="form-control form-control-sm" step="0.01" min="0" value="0.00">
+                  </div>
+                  <div class="col-12 col-md-3">
+                    <label class="form-label small fw-semibold">MRP (₹)</label>
+                    <input type="number" name="initial_mrp" class="form-control form-control-sm" step="0.01" min="0" value="0.00">
+                  </div>
+                  <div class="col-12 col-md-3">
+                    <label class="form-label small fw-semibold">Selling Price (₹)</label>
+                    <input type="number" name="initial_selling_price" class="form-control form-control-sm" step="0.01" min="0" value="0.00">
+                  </div>
+                  <div class="col-12 col-md-3">
+                    <label class="form-label small fw-semibold">Supplier</label>
+                    <select name="initial_supplier_id" class="form-select form-select-sm">
+                      <option value="">Select Supplier</option>
+                      {% for s in suppliers %}
+                      <option value="{{ s.id }}">{{ s.name }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+          <div class="col-12 mt-4 pt-3 border-top d-flex justify-content-end gap-2">
+            <a href="{{ url_for('inventory') }}" class="btn btn-outline-secondary px-4">Cancel</a>
+            <button type="submit" class="btn btn-med-primary px-4 fw-semibold">
+              <i class="bi bi-save me-1"></i> {% if mode == 'edit' %}Save Changes{% else %}Save Medicine{% endif %}
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

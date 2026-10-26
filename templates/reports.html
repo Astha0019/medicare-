@@ -1,0 +1,567 @@
+{% extends "base.html" %}
+
+{% block title %}Pharmacy Reports & Financial Valuation — MediCare Pro{% endblock %}
+
+{% block page_title %}
+<div>
+  <h4 class="mb-0">Reports & Financial Analytics</h4>
+  <small class="text-muted">Sales, purchases, inventory valuation, gross profit, and CSV exports in INR (₹)</small>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Date Range & Preset Filter Bar -->
+<div class="med-card mb-4 no-print">
+  <form method="GET" action="{{ url_for('reports') }}" class="row g-2 align-items-center">
+    <input type="hidden" name="type" id="reportTypeInput" value="{{ report_type }}">
+
+    <div class="col-12 col-md-3">
+      <label class="form-label small text-muted mb-1">From Date</label>
+      <input type="date" name="from" id="filterFromDate" class="form-control form-control-sm" value="{{ date_from }}">
+    </div>
+
+    <div class="col-12 col-md-3">
+      <label class="form-label small text-muted mb-1">To Date</label>
+      <input type="date" name="to" id="filterToDate" class="form-control form-control-sm" value="{{ date_to }}">
+    </div>
+
+    <div class="col-12 col-md-4">
+      <label class="form-label small text-muted mb-1">Quick Presets</label>
+      <div class="btn-group btn-group-sm w-100" role="group">
+        <button type="button" class="btn btn-outline-secondary" onclick="setPreset('today')">Today</button>
+        <button type="button" class="btn btn-outline-secondary" onclick="setPreset('7days')">7 Days</button>
+        <button type="button" class="btn btn-outline-secondary" onclick="setPreset('month')">This Month</button>
+      </div>
+    </div>
+
+    <div class="col-12 col-md-2 d-flex align-items-end">
+      <button type="submit" class="btn btn-sm btn-primary w-100"><i class="bi bi-funnel me-1"></i> Apply Filter</button>
+    </div>
+  </form>
+</div>
+
+<!-- Report Navigation Tabs -->
+<ul class="nav nav-pills mb-3 gap-2 no-print" id="reportsTabs" role="tablist">
+  <li class="nav-item">
+    <a class="nav-link btn-sm {% if report_type == 'sales' %}active{% endif %}" href="{{ url_for('reports', type='sales', from=date_from, to=date_to) }}">
+      <i class="bi bi-receipt me-1"></i> Sales & Profit
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link btn-sm {% if report_type == 'purchases' %}active{% endif %}" href="{{ url_for('reports', type='purchases', from=date_from, to=date_to) }}">
+      <i class="bi bi-truck me-1"></i> Purchase Reports
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link btn-sm {% if report_type == 'valuation' %}active{% endif %}" href="{{ url_for('reports', type='valuation', from=date_from, to=date_to) }}">
+      <i class="bi bi-wallet2 me-1"></i> Stock Valuation
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link btn-sm {% if report_type == 'lowstock' %}active{% endif %}" href="{{ url_for('reports', type='lowstock', from=date_from, to=date_to) }}">
+      <i class="bi bi-exclamation-triangle me-1"></i> Low Stock ({{ low_stock_list|length }})
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link btn-sm {% if report_type == 'topmeds' %}active{% endif %}" href="{{ url_for('reports', type='topmeds', from=date_from, to=date_to) }}">
+      <i class="bi bi-stars me-1"></i> Best Sellers
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link btn-sm {% if report_type == 'suppliers' %}active{% endif %}" href="{{ url_for('reports', type='suppliers', from=date_from, to=date_to) }}">
+      <i class="bi bi-building me-1"></i> Supplier Analytics
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link btn-sm {% if report_type == 'mrs' %}active{% endif %}" href="{{ url_for('reports', type='mrs', from=date_from, to=date_to) }}">
+      <i class="bi bi-person-badge me-1"></i> MR Facilitation
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link btn-sm {% if report_type == 'returns' %}active{% endif %}" href="{{ url_for('reports', type='returns', from=date_from, to=date_to) }}">
+      <i class="bi bi-arrow-return-left me-1"></i> Returns & Damages
+    </a>
+  </li>
+</ul>
+
+<!-- Report Content Body -->
+<div class="printable-area">
+  {% if report_type == 'sales' %}
+  <!-- 1. SALES & PROFIT REPORT -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="stat-card stat-card-teal">
+        <div>
+          <div class="stat-label">Net Sales Revenue</div>
+          <h4 class="stat-value text-teal">{{ sales_data.total_net|inr }}</h4>
+          <small class="text-muted">{{ sales_data.count }} Invoice(s)</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card stat-card-blue">
+        <div>
+          <div class="stat-label">Cost of Goods Sold (COGS)</div>
+          <h4 class="stat-value text-primary">{{ sales_data.total_cogs|inr }}</h4>
+          <small class="text-muted">At Batch Purchase Cost</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card stat-card-teal">
+        <div>
+          <div class="stat-label">Estimated Gross Profit</div>
+          <h4 class="stat-value text-success">{{ sales_data.gross_profit|inr }}</h4>
+          <small class="text-success fw-bold">Margin: {{ sales_data.gross_margin_pct }}%</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card stat-card-blue">
+        <div>
+          <div class="stat-label">Total GST Tax Collected</div>
+          <h4 class="stat-value text-dark">{{ sales_data.total_tax|inr }}</h4>
+          <small class="text-muted">CGST + SGST</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="med-card">
+    <div class="med-card-header d-flex justify-content-between align-items-center">
+      <h5 class="med-card-title mb-0">Sales Transactions & Profit Breakdown ({{ date_from }} to {{ date_to }})</h5>
+      <div class="d-flex gap-2 no-print">
+        <button type="button" class="btn btn-sm btn-outline-dark" onclick="window.print()"><i class="bi bi-printer me-1"></i> Print</button>
+        <a href="{{ url_for('export_report_csv', type='sales', from=date_from, to=date_to) }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-download me-1"></i> Export CSV
+        </a>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table med-table align-middle">
+        <thead>
+          <tr>
+            <th>Invoice No</th>
+            <th>Date & Time</th>
+            <th>Customer</th>
+            <th>Mode</th>
+            <th class="text-end">Gross (₹)</th>
+            <th class="text-end">Disc (₹)</th>
+            <th class="text-end">GST (₹)</th>
+            <th class="text-end">Net Total (₹)</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in sales_data.sales %}
+          <tr>
+            <td>
+              <a href="{{ url_for('view_invoice', id=s.id) }}" class="fw-bold font-monospace text-primary text-decoration-none">
+                {{ s.invoice_number }}
+              </a>
+            </td>
+            <td><small class="text-muted">{{ s.sale_date|datetime_fmt }}</small></td>
+            <td>{{ s.customer_name }}</td>
+            <td><span class="badge bg-light text-dark border">{{ s.payment_mode }}</span></td>
+            <td class="text-end font-monospace">{{ s.subtotal|inr }}</td>
+            <td class="text-end text-danger font-monospace">-{{ s.discount_amount|inr }}</td>
+            <td class="text-end text-muted font-monospace">+{{ s.tax_amount|inr }}</td>
+            <td class="text-end font-monospace fw-bold text-dark">{{ s.total_amount|inr }}</td>
+            <td><span class="badge badge-good">{{ s.status }}</span></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="9" class="text-center py-4 text-muted">No sales found in this date range.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% elif report_type == 'purchases' %}
+  <!-- 2. PURCHASES REPORT -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="stat-card stat-card-blue">
+        <div>
+          <div class="stat-label">Total Inward Purchases</div>
+          <h4 class="stat-value text-primary">{{ purchase_data.total_purchases|inr }}</h4>
+          <small class="text-muted">{{ purchase_data.count }} Orders</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card stat-card-teal">
+        <div>
+          <div class="stat-label">Purchases Paid</div>
+          <h4 class="stat-value text-success">{{ purchase_data.paid_amount|inr }}</h4>
+          <small class="text-muted">Settled invoices</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card stat-card-warning">
+        <div>
+          <div class="stat-label">Pending / Credit</div>
+          <h4 class="stat-value text-warning">{{ purchase_data.pending_amount|inr }}</h4>
+          <small class="text-muted">Outstanding to distributors</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card stat-card-blue">
+        <div>
+          <div class="stat-label">Input GST Tax Paid</div>
+          <h4 class="stat-value text-dark">{{ purchase_data.total_tax|inr }}</h4>
+          <small class="text-muted">Input tax credit eligible</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="med-card">
+    <div class="med-card-header d-flex justify-content-between align-items-center">
+      <h5 class="med-card-title mb-0">Supplier Purchase Records ({{ date_from }} to {{ date_to }})</h5>
+      <div class="d-flex gap-2 no-print">
+        <button type="button" class="btn btn-sm btn-outline-dark" onclick="window.print()"><i class="bi bi-printer me-1"></i> Print</button>
+        <a href="{{ url_for('export_report_csv', type='purchases', from=date_from, to=date_to) }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-download me-1"></i> Export CSV
+        </a>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table med-table align-middle">
+        <thead>
+          <tr>
+            <th>Supplier Inv #</th>
+            <th>Date</th>
+            <th>Supplier</th>
+            <th>MR</th>
+            <th class="text-end">Subtotal (₹)</th>
+            <th class="text-end">Tax (₹)</th>
+            <th class="text-end">Net Total (₹)</th>
+            <th>Payment Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in purchase_data.purchases %}
+          <tr>
+            <td>
+              <a href="{{ url_for('view_purchase', id=p.id) }}" class="fw-bold font-monospace text-dark text-decoration-none">
+                {{ p.invoice_number }}
+              </a>
+            </td>
+            <td><small class="text-muted">{{ p.purchase_date|date_fmt }}</small></td>
+            <td><strong>{{ p.supplier.name }}</strong></td>
+            <td>{{ p.mr.name if p.mr else 'Direct' }}</td>
+            <td class="text-end font-monospace">{{ p.subtotal|inr }}</td>
+            <td class="text-end font-monospace">{{ p.tax_amount|inr }}</td>
+            <td class="text-end font-monospace fw-bold text-primary">{{ p.net_amount|inr }}</td>
+            <td><span class="badge {% if p.payment_status == 'Paid' %}badge-good{% else %}bg-warning text-dark{% endif %}">{{ p.payment_status }}</span></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="8" class="text-center py-4 text-muted">No purchases found in this date range.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% elif report_type == 'valuation' %}
+  <!-- 3. INVENTORY VALUATION REPORT -->
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-md-4">
+      <div class="stat-card stat-card-blue">
+        <div>
+          <div class="stat-label">Inventory Valuation (Purchase Cost)</div>
+          <h3 class="stat-value text-primary">{{ valuation_cost|inr }}</h3>
+          <small class="text-muted">Total capital invested in current stock</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="stat-card stat-card-teal">
+        <div>
+          <div class="stat-label">Inventory Valuation (MRP)</div>
+          <h3 class="stat-value text-teal">{{ valuation_mrp|inr }}</h3>
+          <small class="text-muted">Retail realizable stock value</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="stat-card stat-card-teal">
+        <div>
+          <div class="stat-label">Potential Gross Margin</div>
+          <h3 class="stat-value text-success">{{ (valuation_mrp - valuation_cost)|inr }}</h3>
+          <small class="text-success fw-bold">Unrealized retail margin</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="med-card">
+    <div class="med-card-header d-flex justify-content-between align-items-center">
+      <h5 class="med-card-title mb-0">Live Inventory Valuation Breakdown</h5>
+      <a href="{{ url_for('export_report_csv', type='stock') }}" class="btn btn-sm btn-outline-secondary no-print">
+        <i class="bi bi-download me-1"></i> Export Stock CSV
+      </a>
+    </div>
+    <p class="text-muted small">
+      Values are calculated on live non-expired batch units across all registered pharmaceutical SKUs.
+    </p>
+  </div>
+
+  {% elif report_type == 'lowstock' %}
+  <!-- 4. LOW STOCK REPORT -->
+  <div class="med-card">
+    <div class="med-card-header d-flex justify-content-between align-items-center">
+      <h5 class="med-card-title mb-0">
+        <i class="bi bi-exclamation-triangle text-warning"></i>
+        <span>Low Stock Reorder List ({{ low_stock_list|length }} medicines)</span>
+      </h5>
+      <a href="{{ url_for('new_purchase') }}" class="btn btn-sm btn-med-primary no-print">
+        <i class="bi bi-cart-plus me-1"></i> Create Purchase Order
+      </a>
+    </div>
+    <div class="table-responsive">
+      <table class="table med-table align-middle">
+        <thead>
+          <tr>
+            <th>Medicine Name</th>
+            <th>Manufacturer</th>
+            <th>Generic Composition</th>
+            <th>Rack Location</th>
+            <th class="text-end">Current Stock</th>
+            <th class="text-end">Min Threshold</th>
+            <th class="text-end">Suggested Reorder Qty</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in low_stock_list %}
+          <tr>
+            <td>
+              <a href="{{ url_for('view_medicine', id=m.id) }}" class="fw-bold text-decoration-none text-danger">
+                {{ m.name }}
+              </a>
+              <div class="small text-muted">{{ m.dosage_form }} {{ m.strength }}</div>
+            </td>
+            <td>{{ m.manufacturer }}</td>
+            <td><small class="text-muted">{{ m.generic_composition }}</small></td>
+            <td><span class="badge bg-light text-dark border">{{ m.rack_location or 'N/A' }}</span></td>
+            <td class="text-end fw-bold text-danger">{{ m.total_stock }} units</td>
+            <td class="text-end">{{ m.min_stock_level }} units</td>
+            <td class="text-end fw-bold text-primary font-monospace">+{{ (m.min_stock_level * 2) - m.total_stock }} units</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7" class="text-center py-4 text-success">All medicines are above reorder threshold. Stock healthy!</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% elif report_type == 'topmeds' %}
+  <!-- 5. TOP SELLING MEDICINES -->
+  <div class="med-card">
+    <div class="med-card-header">
+      <h5 class="med-card-title mb-0">
+        <i class="bi bi-trophy text-warning"></i>
+        <span>Best-Selling Medicines by Revenue & Volume</span>
+      </h5>
+    </div>
+    <div class="table-responsive">
+      <table class="table med-table align-middle">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Medicine Name</th>
+            <th>Dosage & Strength</th>
+            <th>Brand</th>
+            <th class="text-end">Units Sold</th>
+            <th class="text-end">Total Revenue Generated (₹)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in top_medicines %}
+          <tr>
+            <td><span class="badge bg-primary rounded-circle" style="width: 24px; height: 24px;">{{ loop.index }}</span></td>
+            <td><strong>{{ t.name }}</strong></td>
+            <td>{{ t.form }}</td>
+            <td>{{ t.brand }}</td>
+            <td class="text-end fw-bold">{{ t.qty_sold }} units</td>
+            <td class="text-end font-monospace fw-bold text-primary fs-6">{{ t.revenue|inr }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="text-center py-4 text-muted">No sales recorded yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% elif report_type == 'suppliers' %}
+  <!-- 6. SUPPLIER ANALYTICS -->
+  <div class="med-card">
+    <div class="med-card-header">
+      <h5 class="med-card-title mb-0">Supplier-wise Purchase & Outstanding Summary</h5>
+    </div>
+    <div class="table-responsive">
+      <table class="table med-table align-middle">
+        <thead>
+          <tr>
+            <th>Supplier Name</th>
+            <th>Company</th>
+            <th>GSTIN</th>
+            <th class="text-center">Orders Count</th>
+            <th class="text-end">Total Purchases (₹)</th>
+            <th class="text-end">Pending Balance (₹)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in supplier_data %}
+          <tr>
+            <td><strong>{{ s.supplier.name }}</strong></td>
+            <td>{{ s.supplier.company_name }}</td>
+            <td class="font-monospace"><small>{{ s.supplier.gstin or 'N/A' }}</small></td>
+            <td class="text-center"><span class="badge bg-secondary-subtle text-secondary">{{ s.purchases_count }}</span></td>
+            <td class="text-end font-monospace fw-bold">{{ s.total_amount|inr }}</td>
+            <td class="text-end font-monospace">
+              {% if s.pending_amount > 0 %}
+              <span class="text-danger fw-bold">{{ s.pending_amount|inr }}</span>
+              {% else %}
+              <span class="text-success"><i class="bi bi-check2"></i> Nil</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% elif report_type == 'mrs' %}
+  <!-- 7. MR ANALYTICS -->
+  <div class="med-card">
+    <div class="med-card-header">
+      <h5 class="med-card-title mb-0">Medical Representative (MR) Facilitation Summary</h5>
+    </div>
+    <div class="table-responsive">
+      <table class="table med-table align-middle">
+        <thead>
+          <tr>
+            <th>Representative</th>
+            <th>Pharma Company</th>
+            <th>Territory</th>
+            <th class="text-center">Facilitated Orders</th>
+            <th class="text-end">Total Facilitated Value (₹)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for mr in mr_data %}
+          <tr>
+            <td><strong>{{ mr.mr.name }}</strong></td>
+            <td><span class="badge bg-light text-dark border">{{ mr.company }}</span></td>
+            <td><small class="text-muted">{{ mr.territory }}</small></td>
+            <td class="text-center"><span class="badge bg-secondary-subtle text-secondary">{{ mr.orders_count }}</span></td>
+            <td class="text-end font-monospace fw-bold text-primary">{{ mr.total_amount|inr }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% elif report_type == 'returns' %}
+  <!-- 8. RETURNS & DAMAGES -->
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-md-4">
+      <div class="stat-card stat-card-warning">
+        <div>
+          <div class="stat-label">Customer Returns Refunded</div>
+          <h4 class="stat-value text-warning">{{ returns_data.customer_returns_amount|inr }}</h4>
+          <small class="text-muted">{{ returns_data.customer_returns_count }} returns processed</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="stat-card stat-card-teal">
+        <div>
+          <div class="stat-label">Supplier Returns (Credit)</div>
+          <h4 class="stat-value text-teal">{{ returns_data.supplier_returns_amount|inr }}</h4>
+          <small class="text-muted">{{ returns_data.supplier_returns_count }} supplier returns</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="stat-card stat-card-danger">
+        <div>
+          <div class="stat-label">Expired Stock Write-Off Loss</div>
+          <h4 class="stat-value text-danger">{{ returns_data.write_offs_amount|inr }}</h4>
+          <small class="text-danger">{{ returns_data.write_offs_count }} write-off events</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="med-card">
+    <div class="med-card-header">
+      <h5 class="med-card-title mb-0">Returns & Write-Off Log</h5>
+    </div>
+    <div class="table-responsive">
+      <table class="table med-table align-middle">
+        <thead>
+          <tr>
+            <th>Return No</th>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Reason</th>
+            <th class="text-end">Refund / Loss Value (₹)</th>
+            <th>Handled By</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in returns_data.all_returns %}
+          <tr>
+            <td><strong class="font-monospace">{{ r.return_number }}</strong></td>
+            <td><small class="text-muted">{{ r.return_date|datetime_fmt }}</small></td>
+            <td>
+              {% if r.return_type == 'CustomerReturn' %}
+                <span class="badge bg-warning text-dark">Customer Return</span>
+              {% elif r.return_type == 'SupplierReturn' %}
+                <span class="badge bg-info text-dark">Supplier Return</span>
+              {% else %}
+                <span class="badge bg-danger">Expiry Write-Off</span>
+              {% endif %}
+            </td>
+            <td>{{ r.reason }}</td>
+            <td class="text-end font-monospace fw-bold">{{ r.total_amount|inr }}</td>
+            <td><small class="text-muted">{{ r.user.full_name }}</small></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="text-center py-4 text-muted">No returns or write-offs recorded.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+function setPreset(preset) {
+  const today = new Date();
+  let fromD = new Date();
+  const toStr = today.toISOString().split('T')[0];
+
+  if (preset === 'today') {
+    fromD = today;
+  } else if (preset === '7days') {
+    fromD.setDate(today.getDate() - 7);
+  } else if (preset === 'month') {
+    fromD = new Date(today.getFullYear(), today.getMonth(), 1);
+  }
+
+  document.getElementById('filterFromDate').value = fromD.toISOString().split('T')[0];
+  document.getElementById('filterToDate').value = toStr;
+}
+</script>
+{% endblock %}

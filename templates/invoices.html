@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Sales Invoices — MediCare Pro{% endblock %}
+
+{% block page_title %}
+<div>
+  <h4 class="mb-0">Sales Invoices & Counter Receipts</h4>
+  <small class="text-muted">Track all generated retail medical bills, returns, and payment records</small>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Filter Bar -->
+<div class="med-card mb-3">
+  <form method="GET" action="{{ url_for('invoices') }}" class="row g-2 align-items-center">
+    <div class="col-12 col-md-4">
+      <div class="input-group">
+        <span class="input-group-text bg-white text-muted"><i class="bi bi-search"></i></span>
+        <input type="text" name="q" class="form-control" placeholder="Search by Invoice No, Customer, Phone, or Doctor..." value="{{ search_query }}">
+      </div>
+    </div>
+
+    <div class="col-6 col-md-2">
+      <select name="status" class="form-select">
+        <option value="">All Statuses</option>
+        <option value="Completed" {% if selected_status == 'Completed' %}selected{% endif %}>Completed</option>
+        <option value="Returned" {% if selected_status == 'Returned' %}selected{% endif %}>Returned</option>
+        <option value="Partially Returned" {% if selected_status == 'Partially Returned' %}selected{% endif %}>Partially Returned</option>
+        <option value="Cancelled" {% if selected_status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+      </select>
+    </div>
+
+    <div class="col-6 col-md-2">
+      <input type="date" name="from" class="form-control" value="{{ date_from }}" title="Start Date">
+    </div>
+
+    <div class="col-6 col-md-2">
+      <input type="date" name="to" class="form-control" value="{{ date_to }}" title="End Date">
+    </div>
+
+    <div class="col-6 col-md-2 d-flex gap-2">
+      <button type="submit" class="btn btn-primary flex-grow-1"><i class="bi bi-funnel me-1"></i> Filter</button>
+      <a href="{{ url_for('invoices') }}" class="btn btn-outline-secondary" title="Reset"><i class="bi bi-arrow-clockwise"></i></a>
+    </div>
+  </form>
+</div>
+
+<!-- Invoices Table Card -->
+<div class="med-card">
+  <div class="med-card-header d-flex justify-content-between align-items-center">
+    <h5 class="med-card-title mb-0">
+      <i class="bi bi-receipt-cutoff text-primary"></i>
+      <span>Invoice History ({{ invoices|length }})</span>
+    </h5>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('export_report_csv', type='sales', from=date_from, to=date_to) }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export Invoices CSV
+      </a>
+      <a href="{{ url_for('billing') }}" class="btn btn-sm btn-med-teal">
+        <i class="bi bi-plus-circle me-1"></i> New Bill (F2)
+      </a>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table med-table align-middle">
+      <thead>
+        <tr>
+          <th>Invoice No</th>
+          <th>Date & Time</th>
+          <th>Customer Details</th>
+          <th>Doctor</th>
+          <th>Mode</th>
+          <th class="text-center">Items</th>
+          <th class="text-end">Total Amount (₹)</th>
+          <th>Status</th>
+          <th class="text-center">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in invoices %}
+        <tr>
+          <td>
+            <a href="{{ url_for('view_invoice', id=inv.id) }}" class="fw-bold text-decoration-none text-primary font-monospace">
+              {{ inv.invoice_number }}
+            </a>
+          </td>
+          <td>
+            <small class="text-muted">{{ inv.sale_date|datetime_fmt }}</small>
+          </td>
+          <td>
+            <strong>{{ inv.customer_name }}</strong>
+            {% if inv.customer_phone %}
+            <div class="small text-muted"><i class="bi bi-telephone me-1"></i>{{ inv.customer_phone }}</div>
+            {% endif %}
+          </td>
+          <td>
+            <small class="text-muted">{{ inv.doctor_name or 'Self / Walk-in' }}</small>
+          </td>
+          <td>
+            <span class="badge bg-light text-dark border">{{ inv.payment_mode }}</span>
+          </td>
+          <td class="text-center">
+            <span class="badge bg-secondary-subtle text-secondary">{{ inv.items|length }}</span>
+          </td>
+          <td class="text-end fw-bold text-dark font-monospace fs-6">
+            {{ inv.total_amount|inr }}
+          </td>
+          <td>
+            {% if inv.status == 'Completed' %}
+              <span class="badge badge-good">Completed</span>
+            {% elif inv.status == 'Cancelled' %}
+              <span class="badge bg-danger">Cancelled</span>
+            {% elif inv.status == 'Returned' %}
+              <span class="badge bg-secondary">Returned</span>
+            {% else %}
+              <span class="badge bg-warning text-dark">{{ inv.status }}</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            <div class="btn-group btn-group-sm">
+              <a href="{{ url_for('view_invoice', id=inv.id) }}" class="btn btn-outline-primary" title="View Bill & Print">
+                <i class="bi bi-eye"></i>
+              </a>
+              <a href="{{ url_for('download_invoice_pdf', id=inv.id) }}" class="btn btn-outline-secondary" title="Download Official PDF">
+                <i class="bi bi-file-earmark-pdf"></i>
+              </a>
+              {% if inv.status == 'Completed' %}
+              <a href="{{ url_for('return_invoice_route', id=inv.id) }}" class="btn btn-outline-warning" title="Process Return">
+                <i class="bi bi-arrow-return-left"></i>
+              </a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" class="text-center py-4 text-muted">
+            <i class="bi bi-inbox fs-3 d-block mb-1"></i>
+            No invoices found matching the search criteria.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

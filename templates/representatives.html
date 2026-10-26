@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}Medical Representatives (MR) — MediCare Pro{% endblock %}
+
+{% block page_title %}
+<div>
+  <h4 class="mb-0">Medical Representative (MR) Tracking</h4>
+  <small class="text-muted">Pharma company liaisons, territory coverage, field visits, and facilitated supply volume</small>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="med-card mb-4">
+  <div class="med-card-header d-flex justify-content-between align-items-center">
+    <div>
+      <h5 class="med-card-title mb-0">
+        <i class="bi bi-person-badge-fill text-primary"></i>
+        <span>Registered Medical Representatives ({{ mrs|length }})</span>
+      </h5>
+      <small class="text-muted">Facilitates orders between pharma manufacturers and local wholesale distributors</small>
+    </div>
+    <button type="button" class="btn btn-sm btn-med-teal" data-bs-toggle="modal" data-bs-target="#modalAddMR">
+      <i class="bi bi-plus-lg me-1"></i> Register New MR
+    </button>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table med-table align-middle">
+      <thead>
+        <tr>
+          <th>MR Name</th>
+          <th>Pharma Company</th>
+          <th>Contact & Territory</th>
+          <th>Last Visit Date</th>
+          <th>Visit Notes & Activity</th>
+          <th class="text-center">Orders</th>
+          <th class="text-end">Total Facilitated (₹)</th>
+          <th class="text-center">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for mr_item in mrs %}
+        {% set mr = mr_item.mr %}
+        <tr>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div class="med-avatar bg-primary text-white" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                {{ mr.name[:2].upper() }}
+              </div>
+              <div>
+                <strong>{{ mr.name }}</strong>
+                {% if mr.email %}<div class="small text-muted">{{ mr.email }}</div>{% endif %}
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="badge bg-light text-dark border fs-6">{{ mr.company_name }}</span>
+          </td>
+          <td>
+            <div><i class="bi bi-telephone me-1 text-primary"></i>{{ mr.phone }}</div>
+            <small class="text-muted"><i class="bi bi-geo-alt me-1 text-danger"></i>{{ mr.territory or 'Bangalore' }}</small>
+          </td>
+          <td>
+            {% if mr.last_visit_date %}
+              <div class="fw-semibold">{{ mr.last_visit_date|date_fmt }}</div>
+              <small class="text-muted">{{ (mr.last_visit_date - current_date|date_fmt|int if false else '') }}</small>
+            {% else %}
+              <span class="text-muted small">Not recorded</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="text-truncate" style="max-width: 280px;" title="{{ mr.visit_notes or 'No visit notes.' }}">
+              {{ mr.visit_notes or 'No visit notes logged yet.' }}
+            </div>
+          </td>
+          <td class="text-center">
+            <span class="badge bg-secondary-subtle text-secondary">{{ mr_item.orders_count }} order(s)</span>
+          </td>
+          <td class="text-end font-monospace fw-bold text-primary fs-6">
+            {{ mr_item.total_amount|inr }}
+          </td>
+          <td class="text-center">
+            <button type="button" class="btn btn-sm btn-outline-primary" 
+                    onclick="openLogVisitModal({{ mr.id }}, '{{ mr.name }}', '{{ mr.company_name }}')" title="Log Visit & Notes">
+              <i class="bi bi-journal-plus me-1"></i> Log Visit
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="text-center py-4 text-muted">No medical representatives registered yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add MR Modal -->
+<div class="modal fade" id="modalAddMR" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('representatives') }}">
+        <div class="modal-header bg-light">
+          <h5 class="modal-title text-primary"><i class="bi bi-person-badge-fill me-1"></i> Register Medical Representative</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Representative Full Name <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control" placeholder="e.g., Vikram Joshi" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Pharmaceutical Company <span class="text-danger">*</span></label>
+            <input type="text" name="company_name" class="form-control" placeholder="e.g., Cipla Limited" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Mobile Number <span class="text-danger">*</span></label>
+            <input type="text" name="phone" class="form-control" placeholder="e.g., +91 97412 34567" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Email Address</label>
+            <input type="email" name="email" class="form-control" placeholder="e.g., vikram.joshi@cipla.com">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Assigned Territory / Area</label>
+            <input type="text" name="territory" class="form-control" placeholder="e.g., Bangalore Central & M.G. Road">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Last Visit Date</label>
+            <input type="date" name="last_visit_date" class="form-control" id="mrLastVisitDate">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Initial Visit Notes / Comments</label>
+            <textarea name="visit_notes" class="form-control" rows="2" placeholder="e.g., Discussed new syrup formulations and monsoon deals..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-med-primary"><i class="bi bi-save me-1"></i> Register MR</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Log Visit Modal -->
+<div class="modal fade" id="modalLogVisit" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" id="formLogVisit">
+        <div class="modal-header bg-light">
+          <h5 class="modal-title"><i class="bi bi-calendar-check me-1"></i> Log Field Visit for MR</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Representative</label>
+            <input type="text" id="logMRName" class="form-control" readonly>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Visit Date <span class="text-danger">*</span></label>
+            <input type="date" name="visit_date" class="form-control" id="logVisitDate" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Visit Discussion Notes & Scheme Details <span class="text-danger">*</span></label>
+            <textarea name="visit_notes" class="form-control" rows="3" placeholder="e.g., Introduced new 10+1 scheme, checked stock levels for antibiotics..." required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i> Save Visit Record</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const todayStr = new Date().toISOString().split('T')[0];
+  const dateInput = document.getElementById('mrLastVisitDate');
+  if (dateInput) dateInput.value = todayStr;
+});
+
+function openLogVisitModal(mrId, mrName, company) {
+  document.getElementById('formLogVisit').action = `/representatives/log-visit/${mrId}`;
+  document.getElementById('logMRName').value = `${mrName} (${company})`;
+  document.getElementById('logVisitDate').value = new Date().toISOString().split('T')[0];
+  new bootstrap.Modal(document.getElementById('modalLogVisit')).show();
+}
+</script>
+{% endblock %}

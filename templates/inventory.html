@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Medicine Inventory — MediCare Pro{% endblock %}
+
+{% block page_title %}
+<div>
+  <h4 class="mb-0">Medicine Inventory Management</h4>
+  <small class="text-muted">Multi-batch tracking, stock valuation, and pharmacy rack locations</small>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Search and Filter Bar -->
+<div class="med-card mb-3">
+  <form method="GET" action="{{ url_for('inventory') }}" class="row g-2 align-items-center">
+    <div class="col-12 col-md-4">
+      <div class="input-group">
+        <span class="input-group-text bg-white text-muted"><i class="bi bi-search"></i></span>
+        <input type="text" name="q" class="form-control" placeholder="Search by medicine, generic composition, SKU, barcode..." value="{{ search_query }}">
+      </div>
+    </div>
+
+    <div class="col-6 col-md-2">
+      <select name="category" class="form-select">
+        <option value="">All Categories</option>
+        {% for cat in categories %}
+        <option value="{{ cat }}" {% if selected_category == cat %}selected{% endif %}>{{ cat }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-6 col-md-2">
+      <select name="brand" class="form-select">
+        <option value="">All Brands</option>
+        {% for b in brands %}
+        <option value="{{ b }}" {% if selected_brand == b %}selected{% endif %}>{{ b }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-6 col-md-2">
+      <select name="stock" class="form-select">
+        <option value="">Stock Status</option>
+        <option value="low" {% if selected_stock == 'low' %}selected{% endif %}>Low Stock (&le; Min)</option>
+        <option value="out" {% if selected_stock == 'out' %}selected{% endif %}>Out of Stock</option>
+        <option value="near_expiry" {% if selected_stock == 'near_expiry' %}selected{% endif %}>Near Expiry (&le; 90d)</option>
+        <option value="expired" {% if selected_stock == 'expired' %}selected{% endif %}>Has Expired Batches</option>
+      </select>
+    </div>
+
+    <div class="col-6 col-md-2 d-flex gap-2">
+      <button type="submit" class="btn btn-primary flex-grow-1"><i class="bi bi-funnel me-1"></i> Filter</button>
+      <a href="{{ url_for('inventory') }}" class="btn btn-outline-secondary" title="Reset filters"><i class="bi bi-arrow-clockwise"></i></a>
+    </div>
+  </form>
+</div>
+
+<!-- Medicine List Table Card -->
+<div class="med-card">
+  <div class="med-card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div>
+      <h5 class="med-card-title mb-0">
+        <i class="bi bi-capsule-pill text-primary"></i>
+        <span>Registered Medicines</span>
+      </h5>
+      <small class="text-muted">Showing {{ medicines|length }} medicine record(s)</small>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('export_report_csv', type='stock') }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-download me-1"></i> Export Stock CSV
+      </a>
+      <a href="{{ url_for('add_medicine') }}" class="btn btn-sm btn-med-teal">
+        <i class="bi bi-plus-lg me-1"></i> Add New Medicine
+      </a>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table med-table align-middle">
+      <thead>
+        <tr>
+          <th>Medicine Details</th>
+          <th>Generic Composition</th>
+          <th>Category & HSN</th>
+          <th>Rack Location</th>
+          <th class="text-center">Batches</th>
+          <th class="text-end">Available Stock</th>
+          <th>Stock Status</th>
+          <th class="text-center">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in medicines %}
+        <tr>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div>
+                <a href="{{ url_for('view_medicine', id=m.id) }}" class="fw-bold text-decoration-none text-primary">
+                  {{ m.name }}
+                </a>
+                {% if m.is_demo %}
+                <span class="badge badge-demo ms-1">Demo</span>
+                {% endif %}
+                <div class="small text-muted">
+                  {{ m.manufacturer }} &bull; <span class="badge bg-light text-secondary border">{{ m.dosage_form }} {{ m.strength }}</span>
+                </div>
+                <small class="text-muted font-monospace">SKU: {{ m.sku }}</small>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div class="text-truncate" style="max-width: 220px;" title="{{ m.generic_composition }}">
+              {{ m.generic_composition }}
+            </div>
+          </td>
+          <td>
+            <div>{{ m.category }}</div>
+            <small class="text-muted">HSN: <strong>{{ m.hsn_code }}</strong> (GST: {{ m.gst_rate }}%)</small>
+          </td>
+          <td>
+            <span class="badge bg-light text-dark border">
+              <i class="bi bi-geo-alt me-1 text-primary"></i>{{ m.rack_location or 'Unassigned' }}
+            </span>
+          </td>
+          <td class="text-center">
+            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2">
+              {{ m.batches.count() }} batch(es)
+            </span>
+          </td>
+          <td class="text-end">
+            <div class="fw-bold fs-6 {% if m.total_stock == 0 %}text-danger{% elif m.is_low_stock %}text-warning{% else %}text-success{% endif %}">
+              {{ m.total_stock }} units
+            </div>
+            <small class="text-muted">Min: {{ m.min_stock_level }}</small>
+          </td>
+          <td>
+            {% if m.total_stock == 0 %}
+              <span class="badge bg-danger">Out of Stock</span>
+            {% elif m.is_low_stock %}
+              <span class="badge badge-low-stock">Low Stock</span>
+            {% elif m.has_expired %}
+              <span class="badge badge-expired">Has Expired Batch</span>
+            {% elif m.has_near_expiry %}
+              <span class="badge badge-near-expiry">Expiring Soon</span>
+            {% else %}
+              <span class="badge badge-good">Healthy Stock</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            <div class="btn-group btn-group-sm">
+              <a href="{{ url_for('view_medicine', id=m.id) }}" class="btn btn-outline-primary" title="View details and batches">
+                <i class="bi bi-eye"></i>
+              </a>
+              <a href="{{ url_for('edit_medicine', id=m.id) }}" class="btn btn-outline-secondary" title="Edit medicine">
+                <i class="bi bi-pencil"></i>
+              </a>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="text-center py-4 text-muted">
+            <i class="bi bi-inbox fs-3 d-block mb-1"></i>
+            No medicines found matching the selected search or filters.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

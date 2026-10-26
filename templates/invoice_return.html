@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Process Return — Invoice #{{ sale.invoice_number }} — MediCare Pro{% endblock %}
+
+{% block page_title %}
+<div>
+  <h4 class="mb-0">Process Customer Return</h4>
+  <small class="text-muted">Invoice #{{ sale.invoice_number }} &bull; Customer: {{ sale.customer_name }}</small>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-xl-10">
+    <div class="med-card">
+      <div class="med-card-header d-flex justify-content-between align-items-center">
+        <h5 class="med-card-title mb-0">
+          <i class="bi bi-arrow-return-left text-warning"></i>
+          <span>Process Return & Stock Adjustment</span>
+        </h5>
+        <a href="{{ url_for('view_invoice', id=sale.id) }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i> Back to Invoice
+        </a>
+      </div>
+
+      <div class="alert alert-warning small d-flex align-items-center gap-2 mb-4">
+        <i class="bi bi-exclamation-triangle-fill fs-5 text-warning"></i>
+        <div>
+          Select the items and quantities returned by the customer. Choose <strong>Restock</strong> to return items to sellable batch stock, or <strong>Write-Off</strong> if the packaging is unsealed or damaged.
+        </div>
+      </div>
+
+      <form method="POST">
+        <div class="table-responsive mb-4">
+          <table class="table med-table align-middle">
+            <thead>
+              <tr>
+                <th>Medicine Description</th>
+                <th>Batch</th>
+                <th>Exp Date</th>
+                <th class="text-end">Sold Qty</th>
+                <th class="text-end">Unit Price (₹)</th>
+                <th class="text-center" style="width: 140px;">Return Qty</th>
+                <th style="width: 180px;">Action Taken</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in sale.items %}
+              <tr>
+                <td>
+                  <strong>{{ item.medicine.name if item.medicine else 'Medicine' }}</strong>
+                  {% if item.medicine and item.medicine.strength %}
+                  <div class="small text-muted">{{ item.medicine.strength }}</div>
+                  {% endif %}
+                </td>
+                <td><span class="badge bg-light text-dark border">{{ item.batch_number }}</span></td>
+                <td><small class="text-muted">{{ item.expiry_date|date_fmt }}</small></td>
+                <td class="text-end fw-bold">{{ item.quantity }}</td>
+                <td class="text-end font-monospace">{{ (item.line_total / item.quantity)|inr }}</td>
+                <td>
+                  <input type="number" name="return_qty_{{ item.id }}" class="form-control form-control-sm text-center" 
+                         min="0" max="{{ item.quantity }}" value="0">
+                </td>
+                <td>
+                  <select name="return_action_{{ item.id }}" class="form-select form-select-sm">
+                    <option value="Restock" selected>Restock (Sellable)</option>
+                    <option value="WriteOff">Write-Off (Damaged)</option>
+                  </select>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label small fw-semibold">Reason for Return <span class="text-danger">*</span></label>
+          <input type="text" name="reason" class="form-control" placeholder="e.g., Doctor altered dosage / excess strips purchased" required>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 border-top pt-3">
+          <a href="{{ url_for('view_invoice', id=sale.id) }}" class="btn btn-outline-secondary">Cancel</a>
+          <button type="submit" class="btn btn-warning fw-semibold">
+            <i class="bi bi-check2-circle me-1"></i> Confirm Return & Refund
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}Invoice #{{ sale.invoice_number }} — MediCare Pro{% endblock %}
+
+{% block page_title %}
+<div>
+  <h4 class="mb-0">Tax Invoice #{{ sale.invoice_number }}</h4>
+  <small class="text-muted">Retail Chemist & Druggist Cash Memo &bull; Billed by {{ sale.cashier.full_name }}</small>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Top Action Bar (hidden on print) -->
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4 no-print">
+  <a href="{{ url_for('invoices') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i> Back to Invoices
+  </a>
+  <div class="d-flex flex-wrap gap-2">
+    <button type="button" class="btn btn-outline-dark" onclick="window.print()">
+      <i class="bi bi-printer me-1"></i> Print Receipt (Ctrl+P)
+    </button>
+    <a href="{{ url_for('download_invoice_pdf', id=sale.id) }}" class="btn btn-med-primary">
+      <i class="bi bi-file-earmark-pdf me-1"></i> Download PDF Invoice
+    </a>
+    {% if sale.status == 'Completed' %}
+    <a href="{{ url_for('return_invoice_route', id=sale.id) }}" class="btn btn-outline-warning">
+      <i class="bi bi-arrow-return-left me-1"></i> Process Return
+    </a>
+    {% if current_user.is_admin %}
+    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalCancelInvoice">
+      <i class="bi bi-x-circle me-1"></i> Cancel Invoice
+    </button>
+    {% endif %}
+    {% endif %}
+  </div>
+</div>
+
+<!-- Printable Tax Invoice Sheet -->
+<div class="printable-area bg-white p-4 p-md-5 rounded-3 border shadow-sm mx-auto" style="max-width: 900px;">
+  <!-- Invoice Header -->
+  <div class="text-center pb-3 border-bottom border-2 border-primary">
+    <h2 class="fw-bold mb-1 text-primary">{{ config.PHARMACY_NAME }}</h2>
+    <div class="text-teal fw-semibold small mb-1">{{ config.PHARMACY_TAGLINE }}</div>
+    <div class="small text-muted mb-1">{{ config.PHARMACY_ADDRESS }}</div>
+    <div class="small text-muted mb-1">
+      <strong>Phone:</strong> {{ config.PHARMACY_PHONE }} &bull; <strong>Email:</strong> {{ config.PHARMACY_EMAIL }}
+    </div>
+    <div class="small text-dark fw-bold">
+      GSTIN: <span class="font-monospace">{{ config.PHARMACY_GSTIN }}</span> &bull; 
+      DL No: <span class="font-monospace">{{ config.PHARMACY_DL_NO }}</span> &bull; 
+      FSSAI: <span class="font-monospace">{{ config.PHARMACY_FSSAI }}</span>
+    </div>
+  </div>
+
+  <!-- Memo Title -->
+  <div class="d-flex justify-content-between align-items-center py-2 border-bottom mb-3">
+    <span class="fw-bold text-uppercase text-primary small">Tax Invoice / Retail Cash Memo</span>
+    <span class="badge bg-light text-secondary border">Original for Recipient</span>
+  </div>
+
+  <!-- Customer & Invoice Info Table -->
+  <div class="row g-2 mb-4 p-3 bg-light rounded-3 border">
+    <div class="col-6 col-md-3">
+      <small class="text-muted d-block">Invoice Number</small>
+      <strong class="font-monospace text-primary fs-6">{{ sale.invoice_number }}</strong>
+    </div>
+    <div class="col-6 col-md-3">
+      <small class="text-muted d-block">Date & Time</small>
+      <strong>{{ sale.sale_date|datetime_fmt }}</strong>
+    </div>
+    <div class="col-6 col-md-3">
+      <small class="text-muted d-block">Customer / Patient</small>
+      <strong>{{ sale.customer_name }}</strong>
+      {% if sale.customer_phone %}<div class="small text-muted">{{ sale.customer_phone }}</div>{% endif %}
+    </div>
+    <div class="col-6 col-md-3">
+      <small class="text-muted d-block">Prescribed By Doctor</small>
+      <strong>{{ sale.doctor_name or 'Self / Walk-in' }}</strong>
+      <div class="small text-muted">Mode: {{ sale.payment_mode }}</div>
+    </div>
+  </div>
+
+  <!-- Line Items Table -->
+  <div class="table-responsive mb-4">
+    <table class="table table-bordered table-sm align-middle" style="font-size: 0.85rem;">
+      <thead class="table-light">
+        <tr>
+          <th style="width: 30px;">#</th>
+          <th>Medicine Description</th>
+          <th>Batch</th>
+          <th>Exp</th>
+          <th>HSN</th>
+          <th class="text-end">Qty</th>
+          <th class="text-end">MRP</th>
+          <th class="text-end">Rate</th>
+          <th class="text-end">Disc%</th>
+          <th class="text-end">GST%</th>
+          <th class="text-end">Amount (₹)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in sale.items %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>
+            <strong>{{ item.medicine.name if item.medicine else 'Medicine' }}</strong>
+            {% if item.medicine and item.medicine.strength %}
+            <small class="text-muted">({{ item.medicine.strength }})</small>
+            {% endif %}
+          </td>
+          <td class="font-monospace">{{ item.batch_number }}</td>
+          <td>{{ item.expiry_date|date_fmt }}</td>
+          <td class="font-monospace">{{ item.medicine.hsn_code if item.medicine else '3004' }}</td>
+          <td class="text-end fw-bold">{{ item.quantity }}</td>
+          <td class="text-end">{{ item.unit_mrp|inr(symbol=False) }}</td>
+          <td class="text-end">{{ item.unit_selling_price|inr(symbol=False) }}</td>
+          <td class="text-end">{{ item.discount_percent }}%</td>
+          <td class="text-end">{{ item.gst_rate }}%</td>
+          <td class="text-end fw-bold">{{ item.line_total|inr(symbol=False) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Summary: GST Tax Breakdown & Totals -->
+  <div class="row g-3 mb-3">
+    <!-- Tax Breakdown -->
+    <div class="col-12 col-md-6">
+      <div class="p-3 bg-light rounded-3 border h-100">
+        <h6 class="fw-bold text-secondary small mb-2">GST Tax Breakdown</h6>
+        <table class="table table-sm table-borderless small mb-0">
+          <tr>
+            <td class="text-muted">Central GST (CGST):</td>
+            <td class="text-end fw-bold font-monospace">{{ sale.cgst_amount|inr }}</td>
+          </tr>
+          <tr>
+            <td class="text-muted">State GST (SGST):</td>
+            <td class="text-end fw-bold font-monospace">{{ sale.sgst_amount|inr }}</td>
+          </tr>
+          <tr class="border-top">
+            <td class="fw-bold text-dark">Total GST Tax Collected:</td>
+            <td class="text-end fw-bold font-monospace text-success">{{ sale.tax_amount|inr }}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Billing Totals -->
+    <div class="col-12 col-md-6">
+      <div class="p-3 bg-light rounded-3 border">
+        <table class="table table-sm table-borderless small mb-0">
+          <tr>
+            <td class="text-muted">Gross Subtotal:</td>
+            <td class="text-end font-monospace">{{ sale.subtotal|inr }}</td>
+          </tr>
+          <tr>
+            <td class="text-muted">Discount Applied:</td>
+            <td class="text-end text-danger font-monospace">-{{ sale.discount_amount|inr }}</td>
+          </tr>
+          <tr>
+            <td class="text-muted">GST Tax (Included):</td>
+            <td class="text-end text-muted font-monospace">+{{ sale.tax_amount|inr }}</td>
+          </tr>
+          <tr>
+            <td class="text-muted">Round Off:</td>
+            <td class="text-end text-muted font-monospace">{{ sale.round_off|inr }}</td>
+          </tr>
+          <tr class="border-top border-2 border-primary">
+            <td class="fs-6 fw-bold text-primary">Net Total Payable:</td>
+            <td class="text-end fs-5 fw-bold text-primary font-monospace">{{ sale.total_amount|inr }}</td>
+          </tr>
+          <tr>
+            <td class="text-muted">Amount Paid:</td>
+            <td class="text-end font-monospace">{{ sale.amount_paid|inr }}</td>
+          </tr>
+          <tr>
+            <td class="text-muted">Change Returned:</td>
+            <td class="text-end text-success font-monospace">{{ sale.change_returned|inr }}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Amount in Words -->
+  <div class="p-2 px-3 bg-light rounded-2 border mb-4 small">
+    <strong>Amount in Words:</strong> <em>{{ sale.total_amount|words_inr }}</em>
+  </div>
+
+  <!-- Terms & Signatures -->
+  <div class="row pt-3 border-top g-3 align-items-end" style="font-size: 0.75rem;">
+    <div class="col-8 text-muted">
+      <strong>Terms & Conditions:</strong><br>
+      1. Goods once sold will be accepted for return only within 7 days with original tax invoice.<br>
+      2. Refrigerated drugs (2°C - 8°C) and Schedule H/X narcotics are non-returnable.<br>
+      3. Please check batch number and expiry date before leaving the cash counter.<br>
+      4. This is a computer-generated tax invoice.
+    </div>
+    <div class="col-4 text-center">
+      <div class="fw-bold mb-4">For {{ config.PHARMACY_NAME }}</div>
+      <div class="border-top pt-1 text-muted">Authorized Pharmacist / Signatory</div>
+    </div>
+  </div>
+</div>
+
+<!-- Cancel Invoice Modal -->
+<div class="modal fade" id="modalCancelInvoice" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('cancel_invoice_route', id=sale.id) }}">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill me-1"></i> Cancel Invoice #{{ sale.invoice_number }}</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-danger fw-semibold">
+            Warning: Cancelling this invoice will restore all {{ sale.items|length }} medicine items back to active batch stocks.
+          </p>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Cancellation Reason <span class="text-danger">*</span></label>
+            <textarea name="reason" class="form-control" rows="3" placeholder="Enter reason for cancelling this bill..." required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-danger">Confirm Cancellation & Restore Stock</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

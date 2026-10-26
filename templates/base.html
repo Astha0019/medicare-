@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}MediCare Pro — Indian Medical Shop Management{% endblock %}</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap 5 & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+  <!-- Custom Hospital Theme CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+  {% if current_user.is_authenticated %}
+  <!-- Sidebar -->
+  <aside class="med-sidebar">
+    <a href="{{ url_for('dashboard') }}" class="med-brand">
+      <div class="med-brand-icon">
+        <i class="bi bi-hospital"></i>
+      </div>
+      <div class="med-brand-text">
+        <h5>MediCare Pro</h5>
+        <small>Pharmacy OS &bull; INR</small>
+      </div>
+    </a>
+
+    <ul class="med-sidebar-menu">
+      <li class="med-sidebar-heading">Core Operations</li>
+      <li>
+        <a href="{{ url_for('dashboard') }}" class="med-nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+          <i class="bi bi-grid-1x2-fill"></i>
+          <span>Dashboard</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('billing') }}" class="med-nav-link {% if request.endpoint == 'billing' %}active{% endif %}">
+          <i class="bi bi-receipt-cutoff"></i>
+          <span>Point of Sale (POS)</span>
+          <span class="badge bg-light text-dark ms-auto font-monospace" style="font-size: 0.65rem;">F2</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('invoices') }}" class="med-nav-link {% if request.endpoint in ['invoices', 'view_invoice', 'return_invoice_route'] %}active{% endif %}">
+          <i class="bi bi-journal-text"></i>
+          <span>Sales & Invoices</span>
+        </a>
+      </li>
+
+      <li class="med-sidebar-heading">Inventory & Batches</li>
+      <li>
+        <a href="{{ url_for('inventory') }}" class="med-nav-link {% if request.endpoint in ['inventory', 'add_medicine', 'edit_medicine', 'view_medicine'] %}active{% endif %}">
+          <i class="bi bi-capsule"></i>
+          <span>Medicine Inventory</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('expiry') }}" class="med-nav-link {% if request.endpoint == 'expiry' %}active{% endif %}">
+          <i class="bi bi-clock-history"></i>
+          <span>Expiry Dashboard</span>
+          {% if expiry_alert_count > 0 %}
+          <span class="badge bg-danger ms-auto rounded-pill">{{ expiry_alert_count }}</span>
+          {% endif %}
+        </a>
+      </li>
+
+      <li class="med-sidebar-heading">Supply Chain</li>
+      <li>
+        <a href="{{ url_for('purchases') }}" class="med-nav-link {% if request.endpoint in ['purchases', 'new_purchase', 'view_purchase'] %}active{% endif %}">
+          <i class="bi bi-bag-plus-fill"></i>
+          <span>Purchase Orders</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('suppliers') }}" class="med-nav-link {% if request.endpoint == 'suppliers' %}active{% endif %}">
+          <i class="bi bi-truck"></i>
+          <span>Distributors & Suppliers</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('representatives') }}" class="med-nav-link {% if request.endpoint == 'representatives' %}active{% endif %}">
+          <i class="bi bi-person-badge-fill"></i>
+          <span>Medical Reps (MR)</span>
+        </a>
+      </li>
+
+      <li class="med-sidebar-heading">Analytics & Security</li>
+      <li>
+        <a href="{{ url_for('reports') }}" class="med-nav-link {% if request.endpoint == 'reports' %}active{% endif %}">
+          <i class="bi bi-graph-up-arrow"></i>
+          <span>Reports & Valuation</span>
+        </a>
+      </li>
+      {% if current_user.is_admin %}
+      <li>
+        <a href="{{ url_for('audit_logs') }}" class="med-nav-link {% if request.endpoint == 'audit_logs' %}active{% endif %}">
+          <i class="bi bi-shield-check"></i>
+          <span>Audit Logs</span>
+        </a>
+      </li>
+      {% endif %}
+    </ul>
+
+    <div class="med-sidebar-footer">
+      <div class="med-user-badge">
+        <div class="med-avatar">
+          {{ current_user.full_name[:2].upper() }}
+        </div>
+        <div class="overflow-hidden me-auto">
+          <div class="fw-bold text-truncate text-white" style="font-size: 0.85rem;">{{ current_user.full_name }}</div>
+          <span class="badge {% if current_user.is_admin %}bg-primary{% else %}bg-secondary{% endif %}" style="font-size: 0.65rem;">
+            {{ current_user.role|upper }}
+          </span>
+        </div>
+        <a href="{{ url_for('logout') }}" class="btn btn-sm text-light p-1" title="Logout safely">
+          <i class="bi bi-box-arrow-right fs-5"></i>
+        </a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content Wrapper -->
+  <div class="med-main-content">
+    <!-- Top Navbar -->
+    <header class="med-top-nav">
+      <div class="med-page-title d-flex align-items-center gap-2">
+        {% block page_title %}
+        <h4>Dashboard</h4>
+        {% endblock %}
+      </div>
+
+      <div class="med-top-badges">
+        <div class="d-none d-md-flex align-items-center gap-2 px-3 py-1 bg-light border rounded-pill text-muted small">
+          <i class="bi bi-geo-alt-fill text-danger"></i>
+          <span>{{ pharmacy_name }} &bull; Bangalore</span>
+        </div>
+
+        <div class="d-none d-lg-flex align-items-center gap-2 px-3 py-1 bg-light border rounded-pill text-muted small">
+          <i class="bi bi-calendar-check text-primary"></i>
+          <span>{{ current_date }}</span>
+        </div>
+
+        <a href="{{ url_for('billing') }}" class="btn btn-sm btn-med-teal d-flex align-items-center gap-1 shadow-sm">
+          <i class="bi bi-plus-circle-fill"></i>
+          <span>New Bill (F2)</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="p-3 p-lg-4 flex-grow-1">
+      <!-- Flash Alert Notifications -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm border-0 d-flex align-items-center gap-2" role="alert">
+              {% if category == 'success' %}
+                <i class="bi bi-check-circle-fill fs-5 text-success"></i>
+              {% elif category == 'danger' %}
+                <i class="bi bi-exclamation-triangle-fill fs-5 text-danger"></i>
+              {% elif category == 'warning' %}
+                <i class="bi bi-exclamation-circle-fill fs-5 text-warning"></i>
+              {% else %}
+                <i class="bi bi-info-circle-fill fs-5 text-info"></i>
+              {% endif %}
+              <div>{{ message }}</div>
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-top py-2 px-4 text-center text-muted small d-flex justify-content-between align-items-center">
+      <div>
+        <strong>{{ pharmacy_name }}</strong> &bull; Indian Pharmacy Software &bull; GSTIN: 29AABCU9603R1ZX
+      </div>
+      <div>
+        Currency: <strong>INR (₹)</strong> &bull; Timezone: <strong>Asia/Kolkata</strong>
+      </div>
+    </footer>
+  </div>
+
+  {% else %}
+  <!-- Content when logged out (Login page) -->
+  <main>
+    {% block public_content %}{% endblock %}
+  </main>
+  {% endif %}
+
+  <!-- Bootstrap JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <!-- Application JS -->
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

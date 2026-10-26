@@ -1,0 +1,456 @@
+:root {
+  --med-primary: #0b3b60;       /* Deep Hospital Navy */
+  --med-primary-dark: #082842;
+  --med-primary-light: #16568c;
+  --med-teal: #0e9f85;          /* Clinical Healthcare Teal */
+  --med-teal-dark: #0a7763;
+  --med-teal-light: #e6f6f4;
+  --med-bg: #f4f8fb;            /* Soft Clinical Ice Blue */
+  --med-card-bg: #ffffff;
+  --med-text-main: #1e293b;
+  --med-text-muted: #64748b;
+  --med-border: #e2e8f0;
+  --med-sidebar-width: 260px;
+  --med-danger: #ef4444;
+  --med-warning: #f59e0b;
+  --med-success: #10b981;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background-color: var(--med-bg);
+  color: var(--med-text-main);
+  min-height: 100vh;
+  margin: 0;
+}
+
+/* ---------------- Sidebar Navigation ---------------- */
+.med-sidebar {
+  width: var(--med-sidebar-width);
+  background: linear-gradient(180deg, #0b3b60 0%, #07253d 100%);
+  color: #ffffff;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 4px 0 16px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.med-brand {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+  color: #ffffff;
+}
+
+.med-brand-icon {
+  width: 40px;
+  height: 40px;
+  background: var(--med-teal);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(14, 159, 133, 0.35);
+}
+
+.med-brand-text h5 {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+}
+
+.med-brand-text small {
+  color: #94a3b8;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.med-sidebar-menu {
+  padding: 1rem 0.75rem;
+  list-style: none;
+  margin: 0;
+  flex-grow: 1;
+  overflow-y: auto;
+}
+
+.med-sidebar-heading {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+  padding: 0.75rem 0.75rem 0.35rem 0.75rem;
+  font-weight: 600;
+}
+
+.med-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.65rem 0.85rem;
+  color: #cbd5e1;
+  text-decoration: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  margin-bottom: 2px;
+}
+
+.med-nav-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.med-nav-link.active {
+  background: var(--med-teal);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(14, 159, 133, 0.3);
+}
+
+.med-nav-link i {
+  font-size: 1.15rem;
+}
+
+.med-sidebar-footer {
+  padding: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.med-user-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.med-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+/* ---------------- Main Content Layout ---------------- */
+.med-main-content {
+  margin-left: var(--med-sidebar-width);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------------- Top Navbar ---------------- */
+.med-top-nav {
+  background: #ffffff;
+  border-bottom: 1px solid var(--med-border);
+  padding: 0.85rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 999;
+}
+
+.med-page-title h4 {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--med-primary);
+}
+
+.med-top-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* ---------------- Cards & UI Containers ---------------- */
+.med-card {
+  background: #ffffff;
+  border: 1px solid var(--med-border);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.med-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(11, 59, 96, 0.08);
+}
+
+.med-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--med-border);
+}
+
+.med-card-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--med-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ---------------- Stat Cards ---------------- */
+.stat-card {
+  border-radius: 12px;
+  padding: 1.25rem;
+  background: #ffffff;
+  border: 1px solid var(--med-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+}
+
+.stat-card-blue::before { background: var(--med-primary); }
+.stat-card-teal::before { background: var(--med-teal); }
+.stat-card-warning::before { background: var(--med-warning); }
+.stat-card-danger::before { background: var(--med-danger); }
+
+.stat-card .stat-label {
+  font-size: 0.8rem;
+  color: var(--med-text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.35rem;
+}
+
+.stat-card .stat-value {
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: var(--med-primary-dark);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.stat-icon-blue { background: #e8f2fa; color: var(--med-primary); }
+.stat-icon-teal { background: var(--med-teal-light); color: var(--med-teal); }
+.stat-icon-warning { background: #fef3c7; color: var(--med-warning); }
+.stat-icon-danger { background: #fee2e2; color: var(--med-danger); }
+
+/* ---------------- Tables ---------------- */
+.med-table {
+  width: 100%;
+  margin-bottom: 0;
+  font-size: 0.875rem;
+}
+
+.med-table thead th {
+  background-color: #f8fafc;
+  color: var(--med-primary);
+  font-weight: 600;
+  border-bottom: 2px solid var(--med-border);
+  padding: 0.75rem 0.85rem;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+}
+
+.med-table tbody td {
+  padding: 0.75rem 0.85rem;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--med-border);
+  color: #334155;
+}
+
+.med-table tbody tr:hover {
+  background-color: #f8fbfe;
+}
+
+/* ---------------- Badges ---------------- */
+.badge-demo {
+  background-color: #fef3c7;
+  color: #b45309;
+  font-weight: 600;
+  font-size: 0.7rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #fde68a;
+}
+
+.badge-low-stock {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.badge-near-expiry {
+  background-color: #ffedd5;
+  color: #c2410c;
+  font-weight: 600;
+}
+
+.badge-expired {
+  background-color: #ef4444;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.badge-good {
+  background-color: #d1fae5;
+  color: #047857;
+  font-weight: 600;
+}
+
+/* ---------------- Buttons ---------------- */
+.btn-med-primary {
+  background-color: var(--med-primary);
+  border-color: var(--med-primary);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.btn-med-primary:hover {
+  background-color: var(--med-primary-dark);
+  border-color: var(--med-primary-dark);
+  color: #ffffff;
+}
+
+.btn-med-teal {
+  background-color: var(--med-teal);
+  border-color: var(--med-teal);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.btn-med-teal:hover {
+  background-color: var(--med-teal-dark);
+  border-color: var(--med-teal-dark);
+  color: #ffffff;
+}
+
+/* ---------------- POS Billing Specifics ---------------- */
+.pos-search-box {
+  position: relative;
+}
+
+.pos-search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid var(--med-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 1050;
+  max-height: 380px;
+  overflow-y: auto;
+  display: none;
+}
+
+.pos-search-item {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.pos-search-item:hover, .pos-search-item.selected {
+  background: #f0f7fc;
+}
+
+.pos-cart-table {
+  background: #ffffff;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.pos-cart-table th {
+  background: #e9eff5;
+  color: var(--med-primary);
+  font-size: 0.78rem;
+}
+
+.pos-total-display {
+  background: linear-gradient(135deg, #0b3b60 0%, #16568c 100%);
+  color: #ffffff;
+  padding: 1.25rem;
+  border-radius: 10px;
+  text-align: right;
+  margin-bottom: 1rem;
+}
+
+.pos-total-display .total-label {
+  font-size: 0.85rem;
+  opacity: 0.9;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pos-total-display .total-val {
+  font-size: 2.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* ---------------- Thermal / Slip Print Styles ---------------- */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .med-sidebar, .med-top-nav, .no-print, .btn, .alert {
+    display: none !important;
+  }
+  .med-main-content {
+    margin-left: 0 !important;
+    padding: 0 !important;
+  }
+  .printable-area {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 10px !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+}

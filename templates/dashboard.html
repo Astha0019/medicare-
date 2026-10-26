@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — MediCare Pro{% endblock %}
+
+{% block page_title %}
+<div>
+  <h4 class="mb-0">Hospital Pharmacy Dashboard</h4>
+  <small class="text-muted">Live Indian Pharmacy Operations &bull; Real-time Database Statistics</small>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Quick Action Shortcuts Bar -->
+<div class="row g-2 mb-4">
+  <div class="col-12">
+    <div class="bg-white border rounded-3 p-3 shadow-sm d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">Quick Actions</span>
+        <span class="text-muted small">Press <kbd>F2</kbd> anywhere to start counter billing</span>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <a href="{{ url_for('billing') }}" class="btn btn-sm btn-med-teal d-flex align-items-center gap-1">
+          <i class="bi bi-receipt"></i>
+          <span>New Bill (F2)</span>
+        </a>
+        <a href="{{ url_for('add_medicine') }}" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1">
+          <i class="bi bi-plus-lg"></i>
+          <span>Add Medicine</span>
+        </a>
+        <a href="{{ url_for('new_purchase') }}" class="btn btn-sm btn-outline-dark d-flex align-items-center gap-1">
+          <i class="bi bi-box-arrow-in-down"></i>
+          <span>Record Purchase</span>
+        </a>
+        <a href="{{ url_for('expiry') }}" class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1">
+          <i class="bi bi-exclamation-octagon"></i>
+          <span>Expiry Watchlist</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Primary Metric Cards (4 cards) -->
+<div class="row g-3 mb-4">
+  <!-- Today's Sales in INR -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card stat-card-teal">
+      <div>
+        <div class="stat-label">Today's Sales (₹)</div>
+        <h3 class="stat-value text-teal">{{ m.today_sales_amount|inr }}</h3>
+        <small class="text-muted">From {{ m.today_invoices_count }} counter invoice(s)</small>
+      </div>
+      <div class="stat-icon stat-icon-teal">
+        <i class="bi bi-cash-stack"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Today's Invoices -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card stat-card-blue">
+      <div>
+        <div class="stat-label">Today's Invoices</div>
+        <h3 class="stat-value text-primary">{{ m.today_invoices_count }}</h3>
+        <small class="text-muted">Active cashier sessions</small>
+      </div>
+      <div class="stat-icon stat-icon-blue">
+        <i class="bi bi-receipt-cutoff"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Total Medicine Products -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card stat-card-blue">
+      <div>
+        <div class="stat-label">Total Medicines</div>
+        <h3 class="stat-value">{{ m.total_medicines }}</h3>
+        <small class="text-muted">Unique therapeutic items</small>
+      </div>
+      <div class="stat-icon stat-icon-blue">
+        <i class="bi bi-capsule"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Total Stock Units -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card stat-card-teal">
+      <div>
+        <div class="stat-label">Total Stock Units</div>
+        <h3 class="stat-value">{{ m.total_stock_units }}</h3>
+        <small class="text-muted">Across all active batches</small>
+      </div>
+      <div class="stat-icon stat-icon-teal">
+        <i class="bi bi-boxes"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Secondary Metric Cards: Valuations & Alerts (4 cards) -->
+<div class="row g-3 mb-4">
+  <!-- Inventory Valuation -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card stat-card-blue">
+      <div>
+        <div class="stat-label">Inventory Valuation (Cost)</div>
+        <h4 class="stat-value fs-4 text-primary">{{ m.total_valuation_cost|inr }}</h4>
+        <small class="text-muted">MRP: {{ m.total_valuation_mrp|inr }}</small>
+      </div>
+      <div class="stat-icon stat-icon-blue">
+        <i class="bi bi-wallet2"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Low Stock Medicines -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card stat-card-warning">
+      <div>
+        <div class="stat-label">Low Stock Alerts</div>
+        <h4 class="stat-value fs-4 text-warning">{{ m.low_stock_count }}</h4>
+        <small class="text-muted">Below minimum threshold</small>
+      </div>
+      <div class="stat-icon stat-icon-warning">
+        <i class="bi bi-exclamation-triangle"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Expiring Soon (Within 90 Days) -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card stat-card-warning">
+      <div>
+        <div class="stat-label">Expiring Soon (&lt; 90 Days)</div>
+        <h4 class="stat-value fs-4 text-warning">{{ m.expiring_soon_count }}</h4>
+        <small class="text-muted">Actionable batch alert</small>
+      </div>
+      <div class="stat-icon stat-icon-warning">
+        <i class="bi bi-clock-history"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Expired Batches (Loss) -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card stat-card-danger">
+      <div>
+        <div class="stat-label">Expired Batches (Unsold)</div>
+        <h4 class="stat-value fs-4 text-danger">{{ m.expired_count }}</h4>
+        <small class="text-danger fw-semibold">Value: {{ m.expired_valuation|inr }}</small>
+      </div>
+      <div class="stat-icon stat-icon-danger">
+        <i class="bi bi-slash-circle-fill"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Interactive Chart Section (7-day and 30-day sales charts) -->
+<div class="row g-3 mb-4">
+  <div class="col-12 col-lg-8">
+    <div class="med-card h-100">
+      <div class="med-card-header">
+        <h5 class="med-card-title">
+          <i class="bi bi-graph-up text-primary"></i>
+          <span>Sales Trends & Volume</span>
+        </h5>
+        <div class="btn-group btn-group-sm" role="group">
+          <button type="button" class="btn btn-outline-primary active" id="btnChart7Days" onclick="switchChartRange(7)">Last 7 Days</button>
+          <button type="button" class="btn btn-outline-primary" id="btnChart30Days" onclick="switchChartRange(30)">Last 30 Days</button>
+        </div>
+      </div>
+      <div style="height: 280px; position: relative;">
+        <canvas id="salesTrendsChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-4">
+    <div class="med-card h-100">
+      <div class="med-card-header">
+        <h5 class="med-card-title">
+          <i class="bi bi-pie-chart text-teal"></i>
+          <span>Stock by Category</span>
+        </h5>
+      </div>
+      <div style="height: 280px; position: relative;">
+        <canvas id="categoryPieChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Transactions: Sales and Purchases Tables -->
+<div class="row g-3">
+  <!-- Recent Sales -->
+  <div class="col-12 col-lg-7">
+    <div class="med-card">
+      <div class="med-card-header">
+        <h5 class="med-card-title">
+          <i class="bi bi-receipt text-primary"></i>
+          <span>Recent Sales Transactions</span>
+        </h5>
+        <a href="{{ url_for('invoices') }}" class="btn btn-sm btn-link text-decoration-none">View All Bills &rarr;</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table med-table align-middle">
+          <thead>
+            <tr>
+              <th>Invoice No</th>
+              <th>Customer</th>
+              <th>Mode</th>
+              <th>Date & Time</th>
+              <th class="text-end">Amount (₹)</th>
+              <th class="text-center">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in m.recent_sales %}
+            <tr>
+              <td>
+                <a href="{{ url_for('view_invoice', id=s.id) }}" class="fw-bold text-decoration-none text-primary">
+                  {{ s.invoice_number }}
+                </a>
+              </td>
+              <td>
+                <div>{{ s.customer_name }}</div>
+                {% if s.doctor_name %}<small class="text-muted">{{ s.doctor_name }}</small>{% endif %}
+              </td>
+              <td><span class="badge bg-light text-dark border">{{ s.payment_mode }}</span></td>
+              <td><small class="text-muted">{{ s.sale_date|datetime_fmt }}</small></td>
+              <td class="text-end fw-bold text-dark">{{ s.total_amount|inr }}</td>
+              <td class="text-center">
+                <a href="{{ url_for('download_invoice_pdf', id=s.id) }}" class="btn btn-sm btn-outline-secondary p-1" title="Download PDF">
+                  <i class="bi bi-file-earmark-pdf"></i>
+                </a>
+                <a href="{{ url_for('view_invoice', id=s.id) }}" class="btn btn-sm btn-outline-primary p-1 ms-1" title="View details">
+                  <i class="bi bi-eye"></i>
+                </a>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="6" class="text-center py-3 text-muted">No sales recorded yet.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Purchases -->
+  <div class="col-12 col-lg-5">
+    <div class="med-card">
+      <div class="med-card-header">
+        <h5 class="med-card-title">
+          <i class="bi bi-truck text-dark"></i>
+          <span>Recent Supplier Purchases</span>
+        </h5>
+        <a href="{{ url_for('purchases') }}" class="btn btn-sm btn-link text-decoration-none">View All &rarr;</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table med-table align-middle">
+          <thead>
+            <tr>
+              <th>Invoice No</th>
+              <th>Supplier</th>
+              <th>Date</th>
+              <th class="text-end">Net Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in m.recent_purchases %}
+            <tr>
+              <td>
+                <a href="{{ url_for('view_purchase', id=p.id) }}" class="fw-bold text-decoration-none text-dark">
+                  {{ p.invoice_number }}
+                </a>
+              </td>
+              <td>
+                <div class="text-truncate" style="max-width: 130px;" title="{{ p.supplier.name }}">{{ p.supplier.name }}</div>
+              </td>
+              <td><small class="text-muted">{{ p.purchase_date|date_fmt }}</small></td>
+              <td class="text-end fw-bold text-primary">{{ p.net_amount|inr }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="4" class="text-center py-3 text-muted">No purchases recorded yet.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Chart Data passed safely from Python
+const chart7Labels = {{ m.chart_7_days.labels|tojson }};
+const chart7Values = {{ m.chart_7_days.amounts|tojson }};
+const chart30Labels = {{ m.chart_30_days.labels|tojson }};
+const chart30Values = {{ m.chart_30_days.amounts|tojson }};
+
+const categoryLabels = {{ m.category_chart.labels|tojson }};
+const categoryValues = {{ m.category_chart.counts|tojson }};
+
+let salesChart = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+  const ctxSales = document.getElementById('salesTrendsChart').getContext('2d');
+  salesChart = new Chart(ctxSales, {
+    type: 'line',
+    data: {
+      labels: chart7Labels,
+      datasets: [{
+        label: "Sales (₹)",
+        data: chart7Values,
+        borderColor: '#0e9f85',
+        backgroundColor: 'rgba(14, 159, 133, 0.12)',
+        borderWidth: 2.5,
+        fill: true,
+        tension: 0.35,
+        pointBackgroundColor: '#0b3b60',
+        pointRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return '₹ ' + context.parsed.y.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: function(val) { return '₹' + val.toLocaleString('en-IN'); }
+          },
+          grid: { color: '#f1f5f9' }
+        },
+        x: {
+          grid: { display: false }
+        }
+      }
+    }
+  });
+
+  // Category Pie/Doughnut Chart
+  const ctxCategory = document.getElementById('categoryPieChart').getContext('2d');
+  new Chart(ctxCategory, {
+    type: 'doughnut',
+    data: {
+      labels: categoryLabels,
+      datasets: [{
+        data: categoryValues,
+        backgroundColor: [
+          '#0b3b60', '#0e9f85', '#3b82f6', '#f59e0b', '#10b981', '#6366f1'
+        ]
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { boxWidth: 12, font: { size: 11 } }
+        }
+      }
+    }
+  });
+});
+
+function switchChartRange(days) {
+  const btn7 = document.getElementById('btnChart7Days');
+  const btn30 = document.getElementById('btnChart30Days');
+
+  if (days === 7) {
+    btn7.classList.add('active');
+    btn30.classList.remove('active');
+    salesChart.data.labels = chart7Labels;
+    salesChart.data.datasets[0].data = chart7Values;
+  } else {
+    btn30.classList.add('active');
+    btn7.classList.remove('active');
+    salesChart.data.labels = chart30Labels;
+    salesChart.data.datasets[0].data = chart30Values;
+  }
+  salesChart.update();
+}
+</script>
+{% endblock %}
