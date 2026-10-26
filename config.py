@@ -2,13 +2,19 @@ import os
 from decimal import Decimal
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+os.makedirs(os.path.join(BASE_DIR, 'instance'), exist_ok=True)
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'medicare-pro-super-secret-key-inr-2026')
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
+    
+    # Database URL configuration (Render PostgreSQL uses postgres:// which SQLAlchemy 1.4+ requires as postgresql://)
+    _db_url = os.environ.get(
         'DATABASE_URL',
         f'sqlite:///{os.path.join(BASE_DIR, "instance", "medicare_pro.db")}'
     )
+    if _db_url.startswith("postgres://"):
+        _db_url = _db_url.replace("postgres://", "postgresql://", 1)
+    SQLALCHEMY_DATABASE_URI = _db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Pharmacy Details for Invoices & Receipts
