@@ -1,4 +1,5 @@
 # MediCare Pro — Indian Medical Shop Management System
+https://medicare-sw4t.onrender.com/login?next=%2F
 
 **MediCare Pro** is a comprehensive, production-grade Medical Shop & Pharmacy Management System built with Python, Flask, SQLite with SQLAlchemy ORM, Bootstrap 5, Chart.js, and ReportLab. It is specifically tailored for the Indian retail pharmacy sector with native support for Indian Rupees (**₹, INR**), Indian date formatting (**DD-MM-YYYY**), Indian standard time (**Asia/Kolkata**), GST compliance (CGST/SGST), Drug License & HSN classification, and multi-batch inventory tracking.
 
